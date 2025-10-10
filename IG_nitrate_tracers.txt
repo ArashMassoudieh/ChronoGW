@@ -1,0 +1,159 @@
+//path=C:\Users\ArashComp\Dropbox\Copula_GWA\Inputs\
+//outpath=C:\Users\ArashComp\Dropbox\Copula_GWA\Outputs\IG_nitrate_tracers_2ndrun\
+path=C:\Users\jamal\Dropbox\Copula_GWA\Inputs\
+outpath=C:\Users\Jamal\Dropbox\Copula_GWA\Outputs\IG_nitrate_tracers_2ndrun\
+
+
+well=8, {f=0.4795;param=61.55;param=6.15;distribution=igaussian; age_old=8841.8;fm=0.412}
+well=39, {f=0.19;param=27.36;param=12.5;distribution=igaussian; age_old=8841.8;fm=0.417}
+well=20, {f=0.29;param=17.5;param=1.75;distribution=igaussian; age_old=8841.8;fm=0.421}
+well=29, {f=0.93;param=52;param=5.2;distribution=igaussian; age_old=8841.8;fm=0.407}
+//well=36, {f=0.4795;param=61.55;param=6.15;distribution=igaussian; age_old=8841.8;fm=0}
+well=14, {f=0.13;param=38.66;param=3.86;distribution=igaussian; age_old=8841.8;fm=0.415}
+well=4, {f=0.4795;param=61.55;param=6.15;distribution=igaussian; age_old=8841.8;fm=0.393}
+well=35, {f=0.4795;param=61.55;param=6.15;distribution=igaussian; age_old=8841.8;fm=0.421}
+well=32, {f=0.4795;param=61.55;param=6.15;distribution=igaussian; age_old=8841.8;fm=0.403}
+
+tracer=3H, {decay=0.056261946; fm=0; input=3H.txt}
+tracer=3He, {source=0; fm=0}
+tracer=13C, {fm=1;decay=0;co=-25;constant_input=-25;cm=0}
+tracer=14C, {fm=1;decay=0.000120968;input=14C.txt;cm=0}
+tracer=4He, {fm=0;decay=0.048899;constant_input=0;linear_prod=1}
+tracer=NO3, {fm=0;decay=0;input=NO3.txt;input_multiplier=1}
+tracer=85Kr, {fm=0;decay=0.064442839;input=85Krx100.txt}
+
+observed=3H_well8, {well=0; tracer=0; std_no=0; error_structure=0; observed_data=3H_well8.txt}
+observed=3He_well8, {well=0; tracer=1; std_no=1; error_structure=0; observed_data=3He_well8.txt}
+observed=13C_well8, {well=0; tracer=2; std_no=2; error_structure=0; observed_data=13C_well8.txt}
+observed=14C_well8, {well=0; tracer=3; std_no=3; error_structure=0; observed_data=14C_well8.txt}
+observed=4He_well8, {well=0; tracer=4; std_no=4; error_structure=0; observed_data=4He_well8.txt}
+observed=NO3_well8, {well=0; tracer=5; std_no=5; error_structure=0; observed_data=NO3_well8.txt}
+observed=85Kr_well8, {well=0; tracer=6; std_no=6; error_structure=0; observed_data=85Kr_allwells.txt;detect_limit_value=6.37}
+
+observed=3H_well39, {well=1; tracer=0; std_no=0; error_structure=0; observed_data=3H_well39.txt}
+observed=3He_well39, {well=1; tracer=1; std_no=1; error_structure=0; observed_data=3He_well39.txt}
+observed=13C_well39, {well=1; tracer=2; std_no=2; error_structure=0; observed_data=13C_well39.txt}
+observed=14C_well39, {well=1; tracer=3; std_no=3; error_structure=0; observed_data=14C_well39.txt}
+observed=4He_well39, {well=1; tracer=4; std_no=4; error_structure=0; observed_data=4He_well39.txt}
+observed=NO3_well39, {well=1; tracer=5; std_no=5; error_structure=0; observed_data=NO3_well39.txt}
+observed=85Kr_well39, {well=1; tracer=6; std_no=6; error_structure=0; observed_data=85Kr_allwells.txt;detect_limit_value=8.75}
+
+observed=3H_well20, {well=2; tracer=0; std_no=0; error_structure=0; observed_data=3H_well20.txt}
+observed=3He_well20, {well=2; tracer=1; std_no=1; error_structure=0; observed_data=3He_well20.txt}
+observed=13C_well20, {well=2; tracer=2; std_no=2; error_structure=0; observed_data=13C_well20.txt}
+observed=14C_well20, {well=2; tracer=3; std_no=3; error_structure=0; observed_data=14C_well20.txt}
+observed=4He_well20, {well=2; tracer=4; std_no=4; error_structure=0; observed_data=4He_well20.txt}
+observed=NO3_well20, {well=2; tracer=5; std_no=5; error_structure=0; observed_data=NO3_well20.txt}
+observed=85Kr_well20, {well=2; tracer=6; std_no=6; error_structure=0; observed_data=85Kr_allwells.txt;detect_limit_value=8.49}
+
+observed=3H_well29, {well=3; tracer=0; std_no=0; error_structure=0; observed_data=3H_well29.txt}
+observed=3He_well29, {well=3; tracer=1; std_no=1; error_structure=0; observed_data=3He_well29.txt}
+observed=13C_well29, {well=3; tracer=2; std_no=2; error_structure=0; observed_data=13C_well29.txt}
+observed=14C_well29, {well=3; tracer=3; std_no=3; error_structure=0; observed_data=14C_well29.txt}
+observed=4He_well29, {well=3; tracer=4; std_no=4; error_structure=0; observed_data=4He_well29.txt}
+observed=NO3_well29, {well=3; tracer=5; std_no=5; error_structure=0; observed_data=NO3_well29.txt}
+observed=85Kr_well29, {well=3; tracer=6; std_no=6; error_structure=0; observed_data=85Kr_allwells.txt;detect_limit_value=2.92}
+
+//observed=3H_well36, {well=4; tracer=0; std_no=0; error_structure=0; observed_data=3H_well36.txt}
+//observed=3He_well36, {well=4; tracer=1; std_no=1; error_structure=0; observed_data=3He_well36.txt}
+//observed=13C_well36, {well=4; tracer=2; std_no=2; error_structure=0; observed_data=13C_well36.txt}
+//observed=14C_well36, {well=4; tracer=3; std_no=3; error_structure=0; observed_data=14C_well36.txt}
+//observed=4He_well36, {well=4; tracer=4; std_no=4; error_structure=0; observed_data=4He_well36.txt}
+//observed=NO3_well36, {well=4; tracer=5; std_no=5; error_structure=0; observed_data=NO3_well36.txt}
+//observed=85Kr_well36, {well=4; tracer=6; std_no=6; error_structure=0; observed_data=85Kr_well36.txt}
+
+observed=3H_well14, {well=4; tracer=0; std_no=0; error_structure=0; observed_data=3H_well14.txt}
+observed=3He_well14, {well=4; tracer=1; std_no=1; error_structure=0; observed_data=3He_well14.txt}
+observed=13C_well14, {well=4; tracer=2; std_no=2; error_structure=0; observed_data=13C_well14.txt}
+observed=14C_well14, {well=4; tracer=3; std_no=3; error_structure=0; observed_data=14C_well14.txt}
+observed=4He_well14, {well=4; tracer=4; std_no=4; error_structure=0; observed_data=4He_well14.txt}
+observed=NO3_well14, {well=4; tracer=5; std_no=5; error_structure=0; observed_data=NO3_well14.txt}
+observed=85Kr_well14, {well=4; tracer=6; std_no=6; error_structure=0; observed_data=85Kr_allwells.txt;detect_limit_value=1.99}
+
+observed=3H_well4, {well=5; tracer=0; std_no=0; error_structure=0; observed_data=3H_well4.txt}
+observed=3He_well4, {well=5; tracer=1; std_no=1; error_structure=0; observed_data=3He_well4.txt}
+observed=13C_well4, {well=5; tracer=2; std_no=2; error_structure=0; observed_data=13C_well4.txt}
+observed=14C_well4, {well=5; tracer=3; std_no=3; error_structure=0; observed_data=14C_well4.txt}
+observed=4He_well4, {well=5; tracer=4; std_no=4; error_structure=0; observed_data=4He_well4.txt}
+observed=NO3_well4, {well=5; tracer=5; std_no=5; error_structure=0; observed_data=NO3_well4.txt}
+
+observed=3H_well35, {well=6; tracer=0; std_no=0; error_structure=0; observed_data=3H_well35.txt}
+observed=3He_well35, {well=6; tracer=1; std_no=1; error_structure=0; observed_data=3He_well35.txt}
+observed=13C_well35, {well=6; tracer=2; std_no=2; error_structure=0; observed_data=13C_well35.txt}
+observed=14C_well35, {well=6; tracer=3; std_no=3; error_structure=0; observed_data=14C_well35.txt}
+observed=4He_well35, {well=6; tracer=4; std_no=4; error_structure=0; observed_data=4He_well35.txt}
+observed=NO3_well35, {well=6; tracer=5; std_no=5; error_structure=0; observed_data=NO3_well35.txt}
+
+observed=3H_well32, {well=7; tracer=0; std_no=0; error_structure=0; observed_data=3H_well32.txt}
+observed=3He_well32, {well=7; tracer=1; std_no=1; error_structure=0; observed_data=3He_well32.txt}
+observed=13C_well32, {well=7; tracer=2; std_no=2; error_structure=0; observed_data=13C_well32.txt}
+observed=14C_well32, {well=7; tracer=3; std_no=3; error_structure=0; observed_data=14C_well32.txt}
+observed=4He_well32, {well=7; tracer=4; std_no=4; error_structure=0; observed_data=4He_well32.txt}
+observed=NO3_well32, {well=7; tracer=5; std_no=5; error_structure=0; observed_data=NO3_well32.txt}
+
+project_start=1980
+project_end=2040
+
+pe_info=GAinfo.txt
+detout=modeled.txt
+realizedparam=realized_params.txt 
+
+parameter=young_mean_age_well8, {low=5;high=100;id=0; log=1}
+parameter=young_mean_age_well39, {low=5;high=100;id=1; log=1}
+parameter=young_mean_age_well20, {low=5;high=100;id=2; log=1}
+parameter=young_mean_age_well29, {low=5;high=100;id=3; log=1}
+//parameter=young_mean_age_well36, {low=5;high=100;id=4; log=1}
+parameter=young_mean_age_well14, {low=25;high=100;id=4; log=1}
+parameter=young_mean_age_well4, {low=25;high=100;id=5; log=1}
+parameter=young_mean_age_well35, {low=30;high=100;id=6; log=1}
+parameter=young_mean_age_well32, {low=30;high=100;id=7; log=1}
+
+parameter=young_p2_well8, {low=1;high=100;id=10; log=1}
+parameter=young_p2_well39, {low=1;high=100;id=11; log=1}
+parameter=young_p2_well20, {low=1;high=100;id=12; log=1}
+parameter=young_p2_well29, {low=1;high=100;id=13; log=1}
+//parameter=young_p2_well36, {low=1;high=100;id=14; log=1}
+parameter=young_p2_well14, {low=1;high=100;id=14; log=1}
+parameter=young_p2_well4, {low=1;high=100;id=15; log=1}
+parameter=young_p2_well35, {low=1;high=100;id=16; log=1}
+parameter=young_p2_well32, {low=1;high=100;id=17; log=1}
+
+parameter=fraction_old_well8, {low=0; high=1; id=100; log=2}
+parameter=fraction_old_well39, {low=0; high=1; id=101; log=2}
+parameter=fraction_old_well20, {low=0; high=1; id=102; log=2}
+parameter=fraction_old_well29, {low=0; high=1; id=103; log=2}
+//parameter=fraction_old_well36, {low=0; high=1; id=104; log=2}
+parameter=fraction_old_well14, {low=0; high=1; id=104; log=2}
+parameter=fraction_old_well4, {low=0; high=1; id=105; log=2}
+parameter=fraction_old_well35, {low=0; high=1; id=106; log=2}
+parameter=fraction_old_well32, {low=0; high=1; id=107; log=2}
+
+parameter=age_old_well8, {low=500; high=20000; id=150; log=1}
+parameter=age_old_well39, {low=500; high=20000; id=151; log=1}
+parameter=age_old_well20, {low=500; high=20000; id=152; log=1}
+parameter=age_old_well29, {low=500; high=20000; id=153; log=1}
+//parameter=age_old_well36, {low=500; high=20000; id=154; log=1}
+parameter=age_old_well14, {low=500; high=20000; id=154; log=1}
+parameter=age_old_well4, {low=500; high=20000; id=155; log=1}
+parameter=age_old_well35, {low=500; high=20000; id=156; log=1}
+parameter=age_old_well32, {low=500; high=20000; id=157; log=1}
+
+parameter=13C_bio, {low=-27; high=-23; id=272; log=0}
+parameter=He_acc_rate, {low=1e-3; high=10; id=214; log=1}
+parameter=13C_mineral, {low=0; high=2; id=252; log=0}
+parameter=NO3_mult, {low=0.1; high=5; id=205; log=1}
+//parameter=fm_ratio, {low=0; high=1; id=220; log=2}
+//parameter=4He_old, {low=1; high=1000; id=284; log=1}
+//parameter=vz_delay, {low=0.01; high=5; id=400; log=1} Id+400 is just for well[0]
+
+parameter=fm_well8, {low=0; high=1; id=500; log=2}
+parameter=fm_well39, {low=0; high=1; id=501; log=2}
+parameter=fm_well20, {low=0; high=1; id=502; log=2}
+parameter=fm_well29, {low=0; high=1; id=503; log=2}
+//parameter=fm_well36, {low=0; high=1; id=504; log=2}
+parameter=fm_well14, {low=0; high=1; id=504; log=2}
+parameter=fm_well4, {low=0; high=1; id=505; log=2}
+parameter=fm_well35, {low=0; high=1; id=506; log=2}
+parameter=fm_well32, {low=0; high=1; id=507; log=2}
+
+

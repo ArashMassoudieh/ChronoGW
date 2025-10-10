@@ -1,0 +1,25 @@
+path=C:\Users\jamal\Dropbox\Copula_GWA\Inputs\
+outpath=C:\Users\Jamal\Desktop\Turlock Data Modeling\IG_Well35_onlyNO3\
+
+well=35, {f=0.4795;param=61.55;param=6.15;distribution=igaussian; age_old=8841.8;fm=0.421}
+
+tracer=NO3, {fm=0;decay=0;input=NO3.txt;input_multiplier=1}
+
+observed=NO3_well35, {well=0; tracer=0; std_no=0; error_structure=0; observed_data=NO3_well35.txt}
+
+project_start=1980
+project_end=2040
+
+pe_info=GAinfo.txt
+detout=modeled.txt
+realizedparam=realized_params.txt 
+
+parameter=young_mean_age_well35, {low=5;high=100;id=0; log=1}
+
+parameter=young_p2_well35, {low=1;high=100;id=10; log=1}
+
+parameter=fraction_old_well35, {low=0; high=1; id=100; log=2}
+
+parameter=NO3_mult, {low=0.1; high=5; id=205; log=1}
+
+

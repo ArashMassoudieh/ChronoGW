@@ -1,0 +1,46 @@
+path=C:\Users\Arash\Dropbox\Copula_GWA\Test_Case_1\
+well=8, {f=0;param=20;distribution=exp}
+well=39, {f=0;param=20;distribution=exp}
+tracer=3H, {decay=0.056261946; fm=0; input=3H.txt}
+tracer=3He, {source=0; fm=0}
+tracer=13C, {fm=1;decay=0;co=1;constant_input=1;cm=-25}
+tracer=14C, {fm=1;decay=0.000120968;co=4;input=14C.txt;cm=0}
+tracer=4He, {fm=0;decay=0.000120968;input=4He.txt;linear_prod=1}
+tracer=NO3, {fm=0;decay=0;input=NO3.txt}
+tracer=85Kr, {fm=0;decay=0.064442839;input=85Kr.txt}
+
+observed=3H_well8, {well=0; tracer=0; std_no=0; error_structure=1; observed_data=3H_well8.txt}
+observed=3He_well8, {well=0; tracer=1; std_no=1; error_structure=1; observed_data=3He_well8.txt}
+observed=13C_well8, {well=0; tracer=2; std_no=2; error_structure=0; observed_data=13C_well8.txt}
+observed=14C_well8, {well=0; tracer=3; std_no=3; error_structure=1; observed_data=14C_well8.txt}
+observed=4He_well8, {well=0; tracer=4; std_no=4; error_structure=1; observed_data=4He_well8.txt}
+observed=NO3_well8, {well=0; tracer=5; std_no=5; error_structure=1; observed_data=NO3_well8.txt}
+observed=85Kr_well8, {well=0; tracer=6; std_no=6; error_structure=1; observed_data=85Kr_allwells.txt}
+
+observed=3H_well39, {well=1; tracer=0; std_no=0; error_structure=1; observed_data=3H_well39.txt}
+observed=3He_well39, {well=1; tracer=1; std_no=1; error_structure=1; observed_data=3He_well39.txt}
+observed=13C_well39, {well=1; tracer=2; std_no=2; error_structure=0; observed_data=13C_well39.txt}
+observed=14C_well39, {well=1; tracer=3; std_no=3; error_structure=1; observed_data=14C_well39.txt}
+observed=4He_well39, {well=1; tracer=4; std_no=4; error_structure=1; observed_data=4He_well39.txt}
+observed=NO3_well39, {well=1; tracer=5; std_no=5; error_structure=1; observed_data=NO3_well39.txt}
+observed=85Kr_well39, {well=1; tracer=6; std_no=6; error_structure=1; observed_data=85Kr_allwells.txt}
+
+project_start=2010
+project_end=2040
+pe_info=GAinfo.txt
+detout=modeled.txt
+realizedparam=realized_params.txt 
+parameter=young_mean_age_well8, {low=1;high=100;id=0; log=1}
+parameter=young_mean_age_well39, {low=1;high=100;id=1; log=1}
+
+parameter=fraction_old_well8, {low=0; high=1; id=100; log=2}
+parameter=fraction_old_well39, {low=0; high=1; id=101; log=2}
+
+parameter=NO3_mult, {low=0.2; high=5; id=205; log=1}
+parameter=13C_bio, {low=-27; high=-23; id=272; log=0}
+parameter=13C_mineral, {low=0; high=2; id=252; log=0}
+parameter=4He_production_rate, {low=1e-11; high=1e-9; id=214; log=1}
+parameter=fm_ratio, {low=0; high=1; id=220; log=2}
+parameter=4He_old, {low=1e-9; high=1e-6; id=284; log=1}
+
+

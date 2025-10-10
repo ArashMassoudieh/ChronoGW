@@ -1,0 +1,2 @@
+//year, concentration
+2014.49692,0.088

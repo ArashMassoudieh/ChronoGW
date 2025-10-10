@@ -1,0 +1,51 @@
+// Likelihood structure:
+fixedstd,               0
+logtrans,               1
+
+// Genetic options:
+outputfile,             GAout.txt
+readfromgafile,         0
+maxpop,                 10
+ngen,                   100
+pcross,                 1
+pmute,                  0.01
+shakescale,             0.05
+shakescalered,          0.95
+getfromfilename,        GAout.txt
+initial_population,     GA_ini.txt
+
+// MCMC options:
+mcmcoutputfile,         mcmcout.txt
+justreadmcmc,           1
+continuemcmc,           0
+nmcmcsamples,           500000
+nchains,                10
+burnout,                20000
+stucklimit,        	50
+purtscale,              0.8
+noinipurt,              1
+purt_fac,               0.05
+
+// post-MCMC options:
+mcmc_realization,       1
+nrealizations,          1000
+calculate_sensitivity,  0
+global_sensitivity,     0
+dp_sensitivity,         0.1
+calculate_percentile,   0
+calculate_correlation,  0
+writeinterval,          11
+calc_output_percentiles,0.025,0.975,0.25,0.75
+calc_distributions,     0
+no_bins,                10
+//realizedparamfilename,  realized_params
+
+
+// realization write out options:
+noise_realization_writeout,   0
+obs_realization_writeout,     0
+const_realization_writeout,   0
+
+// ARIMA:
+influent_realization,   0
+forward_montecarlo_filename,  flow_mc.txt

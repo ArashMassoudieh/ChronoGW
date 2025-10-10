@@ -1,0 +1,14 @@
+path=inputs/
+outpath=out/
+
+tracer=3H, {decay=0.056261946; fm=0; input=3H.txt}
+tracer=3He, {source=0; fm=0}
+tracer=13C, {fm=1;decay=0;co=-25;constant_input=-25;cm=0}
+tracer=14C, {fm=1;decay=0.000120968;input=14C.txt;cm=0}
+tracer=4He, {fm=0;decay=0.048899;constant_input=0;linear_prod=1}
+tracer=NO3, {fm=0;decay=0;input=NO3.txt;input_multiplier=1}
+tracer=85Kr, {fm=0;decay=0.064442839;input=85Kr.txt}
+tracer=CFC-11, {decay=0; fm=0; input=CFC-11.txt}
+tracer=CFC-12, {decay=0; fm=0; input=CFC-12.txt}
+tracer=CFC-13, {decay=0; fm=0; input=CFC-13.txt}
+tracer=SF6, {decay=0; fm=0; input=SF6.txt}

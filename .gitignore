@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+debug/Copula_GWA qt.tlog/
+
+Debug/
+
+x64/Release/
