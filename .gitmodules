@@ -1,0 +1,6 @@
+[submodule "Utilities"]
+	path = Utilities
+	url = https://github.com/arashmassoudieh/Utilities.git
+[submodule "InverseModeling"]
+	path = InverseModeling
+	url = https://github.com/arashmassoudieh/InverseModelingLibs.git

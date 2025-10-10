@@ -23,27 +23,27 @@ public:
 	bool linear_prod;	
 	CTracer *SourceTr;
 	string name;
-	double CTracer::calc_conc(double t, CBTC &young_dist, double f, double vz_delay=0, bool fixed_old_tracer=0, double age_old=100000, double fm=0);
-	CTracer& CTracer::operator=(const CTracer &m);
+    double calc_conc(double t, CBTC &young_dist, double f, double vz_delay=0, bool fixed_old_tracer=0, double age_old=100000, double fm=0);
+    CTracer& operator=(const CTracer &m);
 	bool vz_delay;
 	double constant_input_val; bool constant_input;
-	void CTracer::set_val(string S, double val);
+    void set_val(string S, double val);
 //GUI
 	void calcMatrix();
 	vector<vector<CMatrix>> conc;
-	double CTracer::calc_concFromMatrix(double t, vector<double> params, double f, double _vz_delay, bool fixed_old_conc, double age_old, double fm);
+    double calc_concFromMatrix(double t, vector<double> params, double f, double _vz_delay, bool fixed_old_conc, double age_old, double fm);
 	double interpolationMatrix(double t, vector<double> params);
 	double decay_rate;
 
 private:
 	double mu(int index);
 	double lambda(int index);
-	int CTracer::muInv(double mu);
-	int CTracer::lambdaInv(double lambda);
-	float CTracer::year(int index);
-	float CTracer::yearInv(float year);
-	int CTracer::decayrate(int index);
-	float CTracer::decayrateInv(int decayrate);
+    int muInv(double mu);
+    int lambdaInv(double lambda);
+    float year(int index);
+    float yearInv(float year);
+    int decayrate(int index);
+    float decayrateInv(int decayrate);
 	int startYear = 1990;
 	int endYear = 2016;
 	int numberofSteps = endYear - startYear;

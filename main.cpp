@@ -1,7 +1,6 @@
 // Copula_GWA.cpp : Defines the entry point for the console application.
 //
 
-#include "stdafx.h"
 #include "GWA.h"
 #include "GA.h"
 #include "MCMC.h"
@@ -14,17 +13,6 @@
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-
-	QString filePath = "DRIVER={Driver do Microsoft Access (*.mdb)};FIL={CONN_NAME};DBQ=file.mdb";
-	QSqlDatabase db = QSqlDatabase::addDatabase("QODBC", "odbc");
-	db.setDatabaseName(filePath);
-	QSqlQuery query(db)
-		query.exec("SELECT * FROM TABLE;")
-
-
-		QSqlDatabase db = QSqlDatabase::addDatabase("QODBC");
-	db.setHostName("LOCALHOST\\SQLEXPRESS");
-	db.setDatabaseName("mydsn32");
 
 	string filename;
 //	cout<<"Input File Name: ";
