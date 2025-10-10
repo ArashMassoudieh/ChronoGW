@@ -6,9 +6,11 @@
 #include "MCMC.h"
 //#include "qstring.h"
 
+#ifdef Q_GUI_SUPPORT
 #include <QtCore>
 #include <qtsql>
 #include <qstring>
+#endif
 
 
 int _tmain(int argc, _TCHAR* argv[])
