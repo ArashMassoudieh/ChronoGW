@@ -11,14 +11,14 @@ public:
 	CStringOP(void);
 	CStringOP(string S);
 	~CStringOP(void);
-	CStringOP& CStringOP::operator = (const CStringOP &P);
+    CStringOP& operator = (const CStringOP &P);
 	CStringOP(const CStringOP &P);
 	vector<CStringOP> terms;
 	int nterms;
 	int nopts;
 	vector<int> operators;
-	vector<string> CStringOP::breakparents(string S);
-	vector<int> CStringOP::breakops(string S);
+    vector<string> breakparents(string S);
+    vector<int> breakops(string S);
 	bool physical_ch;
 	bool constant;
 	bool parameter;

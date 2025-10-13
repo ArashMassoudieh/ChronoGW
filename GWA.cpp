@@ -1,510 +1,864 @@
 #include "GWA.h"
-#include <string>
+#include "Utilities.h"
+#include <fstream>
+#include <algorithm>
+#include <cmath>
+#include <iostream>
+#include <sstream>
+#include <iomanip>
 
+// ============================================================================
+// Constructors
+// ============================================================================
 
-
-CGWA::CGWA(void)
+CGWA::CGWA()
+    : inverse_enabled_(false)
 {
 }
 
-
-CGWA::~CGWA(void)
+CGWA::CGWA(const std::string& config_filename)
+    : CGWA()
 {
+    loadFromFile(config_filename);
 }
 
-CGWA& CGWA::operator=(const CGWA &m)
+CGWA::CGWA(const CGWA& other)
+    : tracers_(other.tracers_)
+    , wells_(other.wells_)
+    , observations_(other.observations_)
+    , parameters_(other.parameters_)
+    , parameter_values_(other.parameter_values_)
+    , obs_std_devs_(other.obs_std_devs_)
+    , modeled_data_(other.modeled_data_)
+    , projected_data_(other.projected_data_)
+    , settings_(other.settings_)
+    , inverse_enabled_(other.inverse_enabled_)
 {
-	Tracer = m.Tracer;
-	Well = m.Well;
-	lid_config = m.lid_config;
-	parameters = m.parameters;
-	params_vals = m.params_vals;
-	pathname = m.pathname;
-	outpathname = m.outpathname;
-	modeled = m.modeled;
-	obs_std = m.obs_std;
-	PE_info_filename = m.PE_info_filename;
-	realizedparamfilename = m.realizedparamfilename;
-	measured_quan = m.measured_quan;
-	detoutfilename = m.detoutfilename;
-	single_vz_delay = m.single_vz_delay;
-	project = m.project;
-	project_finish = m.project_finish;
-	project_start = m.project_start;
-	project_interval = m.project_interval;
-	projected=m.projected;
-	inverse = m.inverse;
-	fixed_old_tracer = m.fixed_old_tracer;
-	for (int i=0;i<Tracer.size(); i++)
-		if (Tracer[i].source!="") Tracer[i].SourceTr = &Tracer[lookup_tracers(Tracer[i].source)];
-	return *this;
-
+    linkSourceTracers();
 }
 
-CGWA::CGWA(const CGWA &m)
+CGWA& CGWA::operator=(const CGWA& other)
 {
-	Tracer = m.Tracer;
-	Well = m.Well;
-	lid_config = m.lid_config;
-	parameters = m.parameters;
-	params_vals = m.params_vals;
-	pathname = m.pathname;
-	outpathname = m.outpathname;
-	modeled = m.modeled;
-	obs_std = m.obs_std;
-	PE_info_filename = m.PE_info_filename;
-	realizedparamfilename = m.realizedparamfilename;
-	measured_quan = m.measured_quan;
-	detoutfilename = m.detoutfilename;
-	single_vz_delay = m.single_vz_delay;
-	project = m.project;
-	project_finish = m.project_finish;
-	project_start = m.project_start;
-	projected=m.projected;
-	project_interval = m.project_interval;
-	inverse = m.inverse;
-	fixed_old_tracer = m.fixed_old_tracer;
-	for (int i=0;i<Tracer.size(); i++)
-		if (Tracer[i].source!="") Tracer[i].SourceTr = &Tracer[lookup_tracers(Tracer[i].source)];
+    if (this != &other) {
+        tracers_ = other.tracers_;
+        wells_ = other.wells_;
+        observations_ = other.observations_;
+        parameters_ = other.parameters_;
+        parameter_values_ = other.parameter_values_;
+        obs_std_devs_ = other.obs_std_devs_;
+        modeled_data_ = other.modeled_data_;
+        projected_data_ = other.projected_data_;
+        settings_ = other.settings_;
+        inverse_enabled_ = other.inverse_enabled_;
+
+        linkSourceTracers();
+    }
+    return *this;
 }
 
-void CGWA::load_parameters()
-{
-	for (int i=0; i<lid_config.keyword.size(); i++)  //Engine....
-	{
-		if (tolower(lid_config.keyword[i])=="parameter")
-		{
-			inverse = true;
-			range P;
-			P.low = 0;
-			P.high = 0;
-			P.fixed = false;
-			P.log = false;
-			P.applytoall = true;
-			P.tempcorr = 1;
-			P.name = lid_config.value[i];
-			
-			for (int j=0; j<lid_config.param_names[i].size(); j++)
-			{
-				if (tolower(lid_config.param_names[i][j])=="low") P.low = atof(lid_config.param_vals[i][j].c_str());  //low range
-				if (tolower(lid_config.param_names[i][j])=="high") P.high = atof(lid_config.param_vals[i][j].c_str());
-				if (tolower(lid_config.param_names[i][j])=="fixed") P.fixed = atoi(lid_config.param_vals[i][j].c_str());
-				if (tolower(lid_config.param_names[i][j])=="applytoall") P.applytoall = atoi(lid_config.param_vals[i][j].c_str());
-				if (tolower(lid_config.param_names[i][j])=="log") P.log = atoi(lid_config.param_vals[i][j].c_str());
-			}
-			parameters.push_back(P);
-			if (P.log!=1) 
-				params_vals.push_back(0.5*(P.low+P.high));
-			else
-				params_vals.push_back(P.low/fabs(P.low)*sqrt(P.low*P.high));
+// ============================================================================
+// Configuration Loading
+// ============================================================================
 
-		}
-	}
+bool CGWA::loadFromFile(const std::string& filename)
+{
+    inverse_enabled_ = false;
+
+    if (!parseConfigFile(filename)) {
+        return false;
+    }
+
+    loadSettings();
+    loadParameters();
+    loadTracers();
+    loadWells();
+    loadObservedData();
+    setupStdDevParameters();
+    linkSourceTracers();
+    updateConstantInputs();
+
+    return true;
 }
 
-void CGWA::load_wells()
+bool CGWA::parseConfigFile(const std::string& filename)
 {
-	for (int i=0; i<lid_config.keyword.size(); i++)  //Engine....
-	{
-		if (tolower(trim(lid_config.keyword[i]))=="well")
-		{
-			CWell W;
-			W.name = lid_config.value[i];
-			W.vz_delay = 0;
-			W.distribution=lid_config.param_vals[i][lookup(lid_config.param_names[i],"distribution")];
-			W.params.resize(W.get_numparams(W.distribution));
+    std::ifstream file(filename);
+    if (!file.good()) {
+        std::cerr << "Cannot open config file: " << filename << std::endl;
+        return false;
+    }
 
-			for (int j=0; j<lid_config.param_names[i].size(); j++)
-			{
-				W.set_val(lid_config.param_names[i][j],atof(lid_config.param_vals[i][j].c_str()));
-				  
-				
-				if (lookup_parameters(lid_config.est_param[i][j])!=-1) 
-					{
-						parameters[lookup_parameters(lid_config.est_param[i][j])].location.push_back(W.name);
-						parameters[lookup_parameters(lid_config.est_param[i][j])].quan.push_back(lid_config.param_names[i][j]);
-						parameters[lookup_parameters(lid_config.est_param[i][j])].location_type.push_back(0);
-					}
-				}
+    config_data_ = ConfigData(); // Clear previous data
 
-			Well.push_back(W);
-		}
-	}
+    bool in_bracket_block = false;
+    std::vector<std::string> current_params;
 
+    while (!file.eof()) {
+        std::vector<std::string> line = aquiutils::getline(file);
+        if (line.empty()) continue;
+
+        if (!in_bracket_block) {
+            // Parse "keyword = value" line
+            std::vector<std::string> parts = aquiutils::split(line[0], '=');
+            if (parts.size() >= 2) {
+                config_data_.keywords.push_back(aquiutils::trim(parts[0]));
+                config_data_.values.push_back(aquiutils::trim(parts[1]));
+
+                // Check for parameter block
+                if (line.size() > 1) {
+                    size_t brace_open = line[1].find('{');
+                    size_t brace_close = line[1].find('}');
+
+                    if (brace_open != std::string::npos) {
+                        in_bracket_block = true;
+                        current_params.clear();
+
+                        // Parse any params on same line
+                        std::string param_text = line[1].substr(brace_open + 1,
+                                                                brace_close == std::string::npos ? std::string::npos : brace_close - brace_open - 1);
+                        std::vector<std::string> params = aquiutils::split(param_text, ';');
+                        for (const auto& p : params) {
+                            if (!aquiutils::trim(p).empty()) {
+                                current_params.push_back(aquiutils::trim(p));
+                            }
+                        }
+
+                        if (brace_close != std::string::npos) {
+                            in_bracket_block = false;
+                            parseParameterBlock(current_params);
+                        }
+                    } else {
+                        // No parameters for this keyword
+                        parseParameterBlock(current_params);
+                    }
+                } else {
+                    parseParameterBlock(current_params);
+                }
+            }
+        }
+        else {
+            // Inside parameter block
+            std::vector<std::string> params = aquiutils::split(line[0], ';');
+            for (const auto& p : params) {
+                std::string trimmed = aquiutils::trim(p);
+                if (!trimmed.empty() && trimmed != "{" && trimmed != "}") {
+                    current_params.push_back(trimmed);
+                }
+            }
+
+            if (line[0].find('}') != std::string::npos) {
+                in_bracket_block = false;
+                parseParameterBlock(current_params);
+            }
+        }
+    }
+
+    return true;
 }
 
-void CGWA::load_tracers()
+void CGWA::parseParameterBlock(const std::vector<std::string>& params)
 {
-	for (int i=0; i<lid_config.keyword.size(); i++)  
-	{
-		if (tolower(trim(lid_config.keyword[i]))=="tracer")
-		{
-			CTracer T;
-			T.co=0;
-			T.source="";
-			T.retard=1;
-			T.input_multiplier=1;
-			T.cm=0;
-			T.linear_prod=false;
-			T.name = lid_config.value[i];
-			T.vz_delay = false;
-			T.constant_input = false;
+    std::vector<std::string> names, values, est_params;
 
-			for (int j=0; j<lid_config.param_names[i].size(); j++)
-			{
-				T.set_val(lid_config.param_names[i][j], atof(lid_config.param_vals[i][j].c_str()));
-				if (tolower(lid_config.param_names[i][j])=="input") T.input = CBTC(pathname+lid_config.param_vals[i][j]);  
-				if (tolower(lid_config.param_names[i][j])=="source") T.source = lid_config.param_vals[i][j];  
-				if (tolower(lid_config.param_names[i][j])=="linear_prod") T.linear_prod = atoi(lid_config.param_vals[i][j].c_str());
-								
-			
-				if (lookup_parameters(lid_config.est_param[i][j])!=-1) 
-				{
-						parameters[lookup_parameters(lid_config.est_param[i][j])].location.push_back(T.name);
-						parameters[lookup_parameters(lid_config.est_param[i][j])].quan.push_back(lid_config.param_names[i][j]);
-						parameters[lookup_parameters(lid_config.est_param[i][j])].location_type.push_back(1);
-				}
-			}
+    for (const auto& param : params) {
+        std::vector<std::string> parts = aquiutils::split(param, '=');
+        if (parts.size() >= 2) {
+            names.push_back(aquiutils::trim(parts[0]));
 
-			Tracer.push_back(T);
-		}
-	}
-	for (int i=0;i<Tracer.size(); i++)
-		if (Tracer[i].source!="") Tracer[i].SourceTr = &Tracer[lookup_tracers(Tracer[i].source)];
+            std::string value_part = aquiutils::trim(parts[1]);
+
+            // Check if it's a parameter reference like p[0]
+            if (value_part.size() >= 4 && value_part.substr(0, 2) == "p[") {
+                size_t bracket_close = value_part.find(']');
+                if (bracket_close != std::string::npos) {
+                    est_params.push_back(value_part.substr(2, bracket_close - 2));
+                    values.push_back("0"); // Placeholder
+                } else {
+                    est_params.push_back("");
+                    values.push_back(value_part);
+                }
+            } else {
+                est_params.push_back("");
+                values.push_back(value_part);
+            }
+        }
+    }
+
+    config_data_.param_names.push_back(names);
+    config_data_.param_values.push_back(values);
+    config_data_.est_param_names.push_back(est_params);
 }
 
-void CGWA::load_observed()
-{
-	for (int i=0; i<lid_config.keyword.size(); i++)  
-	{
-		if (tolower(lid_config.keyword[i])=="observed")
-		{
-			measured_chrc M;
-			M.error_structure = 0;
-			M.name = lid_config.value[i];
-			M.detect_limit = false;
-			M.max_data_no = 1;
-			M.count_max = 0;
-			for (int j=0; j<lid_config.param_names[i].size(); j++)
-			{
-				if (tolower(lid_config.param_names[i][j])=="well") M.id = lookup_wells(lid_config.param_vals[i][j]);  
-				if (tolower(lid_config.param_names[i][j])=="count_max") M.count_max = atoi(lid_config.param_vals[i][j].c_str());  //location id
-				if (tolower(lid_config.param_names[i][j])=="tracer") M.quan = lookup_tracers(lid_config.param_vals[i][j].c_str());
-				if (tolower(lid_config.param_names[i][j])=="std_no") M.std_no = atoi(lid_config.param_vals[i][j].c_str());
-				if (tolower(lid_config.param_names[i][j])=="error_structure") M.error_structure = atoi(lid_config.param_vals[i][j].c_str());
-				if (tolower(lid_config.param_names[i][j])=="observed_data") 
-				{	M.observed_filename = lid_config.param_vals[i][j];
-					M.observed_data = CBTC(pathname+M.observed_filename);
-				}
-				if (tolower(lid_config.param_names[i][j])=="detect_limit_value") 
-				{	M.detect_limit_value = atof(lid_config.param_vals[i][j].c_str());
-					M.detect_limit = true;
-				}
-			}
-			measured_quan.push_back(M);
-		}
-	}
+// ============================================================================
+// Settings Loading
+// ============================================================================
 
+void CGWA::loadSettings()
+{
+    settings_ = ModelSettings();
+
+    for (size_t i = 0; i < config_data_.keywords.size(); ++i) {
+        std::string key = aquiutils::tolower(config_data_.keywords[i]);
+        const std::string& val = config_data_.values[i];
+
+        if (key == "path") {
+            settings_.input_path = val;
+        }
+        else if (key == "outpath") {
+            settings_.output_path = val;
+        }
+        else if (key == "pe_info") {
+            settings_.pe_info_filename = val;
+        }
+        else if (key == "detout") {
+            settings_.det_output_filename = val;
+        }
+        else if (key == "realizedparam") {
+            settings_.realized_param_filename = val;
+        }
+        else if (key == "single_vz_delay") {
+            settings_.single_vz_delay = (std::atoi(val.c_str()) != 0);
+        }
+        else if (key == "fixed_old_tracer") {
+            settings_.fixed_old_tracer = (std::atoi(val.c_str()) != 0);
+        }
+        else if (key == "project_start") {
+            settings_.project_enabled = true;
+            settings_.project_start = std::atof(val.c_str());
+        }
+        else if (key == "project_finish") {
+            settings_.project_finish = std::atof(val.c_str());
+        }
+        else if (key == "project_interval") {
+            settings_.project_interval = std::atof(val.c_str());
+        }
+    }
+
+    if (settings_.output_path.empty()) {
+        settings_.output_path = settings_.input_path;
+    }
 }
 
-void CGWA::load_settings()
-{
-	single_vz_delay = false;
-	project_finish = 2040;
-	project_interval = 1;
-	project = false;
-	fixed_old_tracer = false;
-	for (int i=0; i<lid_config.keyword.size(); i++)  
-	{
-		if (tolower(lid_config.keyword[i])=="path") pathname = lid_config.value[i];
-		if (tolower(lid_config.keyword[i])=="outpath") outpathname = lid_config.value[i];
-		if (tolower(lid_config.keyword[i])=="pe_info") PE_info_filename = lid_config.value[i];
-		if (tolower(lid_config.keyword[i])=="detout") detoutfilename = lid_config.value[i];
-		if (tolower(lid_config.keyword[i])=="realizedparam") realizedparamfilename = lid_config.value[i];
-		if (tolower(lid_config.keyword[i])=="single_vz_delay") single_vz_delay = atoi(lid_config.value[i].c_str());
-		if (tolower(lid_config.keyword[i])=="fixed_old_tracer") fixed_old_tracer = atoi(lid_config.value[i].c_str());
-		if (tolower(lid_config.keyword[i])=="project_start") 
-		{
-			project=true;
-			project_start = atof(lid_config.value[i].c_str());
-		}
-		if (tolower(lid_config.keyword[i])=="project_finish") project_finish = atof(lid_config.value[i].c_str());
-		if (tolower(lid_config.keyword[i])=="project_interval") project_interval = atof(lid_config.value[i].c_str());
-	}
+// ============================================================================
+// Parameter Loading
+// ============================================================================
 
-	if (outpathname == "") outpathname = pathname;
+void CGWA::loadParameters()
+{
+    parameters_.clear();
+    parameter_values_.clear();
+
+    for (size_t i = 0; i < config_data_.keywords.size(); ++i) {
+        if (aquiutils::tolower(config_data_.keywords[i]) == "parameter") {
+            inverse_enabled_ = true;
+
+            ParameterRange param;
+            param.name = config_data_.values[i];
+
+            // Parse parameter properties
+            for (size_t j = 0; j < config_data_.param_names[i].size(); ++j) {
+                std::string pname = aquiutils::tolower(config_data_.param_names[i][j]);
+                double pval = std::atof(config_data_.param_values[i][j].c_str());
+
+                if (pname == "low") param.low = pval;
+                else if (pname == "high") param.high = pval;
+                else if (pname == "fixed") param.fixed = (pval != 0.0);
+                else if (pname == "log") param.logarithmic = (pval != 0.0);
+                else if (pname == "applytoall") param.apply_to_all = (pval != 0.0);
+            }
+
+            parameters_.push_back(param);
+
+            // Initial value: midpoint (or geometric mean if log-scale)
+            double initial_value;
+            if (!param.logarithmic) {
+                initial_value = 0.5 * (param.low + param.high);
+            } else {
+                initial_value = std::sqrt(std::abs(param.low * param.high));
+                if (param.low < 0) initial_value = -initial_value;
+            }
+            parameter_values_.push_back(initial_value);
+        }
+    }
 }
 
+// ============================================================================
+// Tracers Loading
+// ============================================================================
 
-
-CGWA::CGWA(string filename)
+void CGWA::loadTracers()
 {
-	inverse = false;
-	getconfigfromfile(filename);   //reads input file and creates lid_config
-	load_settings();
-	load_parameters();
-	load_tracers();
-	load_wells();
-	load_observed();
+    tracers_.clear();
 
-	vector<int> stds;
-	
-	for (int i=0; i<measured_quan.size(); i++)
-	{
-		if (lookup(stds,measured_quan[i].std_no)==-1) 
-		{
-			stds.push_back(measured_quan[i].std_no);
-			measured_quan[i].std_to_param = int(parameters.size()); 
-			range P;
+    for (size_t i = 0; i < config_data_.keywords.size(); ++i) {
+        if (aquiutils::tolower(config_data_.keywords[i]) == "tracer") {
+            CTracer tracer(config_data_.values[i]);
 
-			P.fixed = false;
-			P.log = true;
-			P.applytoall = true;
-			P.tempcorr = 1;
-			P.name = "std_" + numbertostring(i);
-			P.low = exp(-4); P.high = exp(4);
-			parameters.push_back(P);
-			params_vals.push_back(sqrt(P.low*P.high));
+            // Parse tracer properties
+            for (size_t j = 0; j < config_data_.param_names[i].size(); ++j) {
+                std::string pname = aquiutils::tolower(config_data_.param_names[i][j]);
+                const std::string& pval_str = config_data_.param_values[i][j];
+                double pval = std::atof(pval_str.c_str());
 
-		}
-	}
-	obs_std.resize(stds.size());
-	
-	set_constant_inputs();
+                if (pname == "input") {
+                    TimeSeries<double> input(settings_.input_path + pval_str);
+                    tracer.setInput(input);
+                }
+                else if (pname == "source") {
+                    tracer.setSourceTracerName(pval_str);
+                }
+                else if (pname == "linear_prod") {
+                    tracer.setLinearProduction(pval != 0.0);
+                }
+                else {
+                    tracer.setParameter(pname, pval);
+                }
 
-	// maximum number of observed data in each well 
-	vector<int> each_well_max_data(Well.size());
-	for (int j=0; j<Well.size();j++)
-	{ each_well_max_data[j] = 0;
-		for (int i=0; i<measured_quan.size(); i++)
-			if (measured_quan[i].id == j)				
-				each_well_max_data[j] = max(each_well_max_data[j],measured_quan[i].observed_data.n);
-		for (int i=0; i<measured_quan.size(); i++)
-			if (measured_quan[i].id == j)				
-				measured_quan[i].max_data_no = each_well_max_data[j];
-	}
-			
+                // Link to parameter if specified
+                const std::string& est_param = config_data_.est_param_names[i][j];
+                if (!est_param.empty()) {
+                    int param_idx = findParameter(est_param);
+                    if (param_idx >= 0) {
+                        parameters_[param_idx].locations.push_back(tracer.getName());
+                        parameters_[param_idx].quantities.push_back(pname);
+                        parameters_[param_idx].location_types.push_back(1); // 1 = tracer
+                    }
+                }
+            }
+
+            tracers_.push_back(tracer);
+        }
+    }
 }
 
-void CGWA::getconfigfromfile(string filename)
+// ============================================================================
+// Wells Loading
+// ============================================================================
+
+void CGWA::loadWells()
 {
-	ifstream file(filename);
+    wells_.clear();
 
-	bool open_bracket = false;
-	vector<char> del2; del2.push_back('{'); del2.push_back('}'); del2.push_back(';'); //del2= { , } , ;
-	vector<char> brackets; brackets.push_back('['); brackets.push_back(']'); //brackets= [ , ]
-	vector<vector<string>> param_list;
-	vector<string> params;
-	if (file.good())
-		while (file.eof()==false)
-		{
-			if (open_bracket == false)
-			{	vector<string> s = getline(file);  //read a line and split it by ","
-			if (s.size()>0)	
-			{	vector<string> ss = split(s[0],'=');   //s[0] is separated by "="
-			lid_config.keyword.push_back(ss[0]);
-			lid_config.value.push_back(ss[1]);
-			vector<string> ss2;
-			int st_br = 0;
-			int en_br = 0;
-			if (s.size()>1) st_br = look_up(s[1],'{')[0];
-			vector<int> en_br_v;
-			if (s.size()>1) en_br_v = look_up(s[1],'}');
-			if (s.size()>1)
-				if (en_br_v.size()==0) en_br = s[1].size(); else en_br=en_br_v[0];
-			if ((s.size()>1) && (s[1].substr(st_br,en_br-st_br)).size()>0)  //Returns a vector with indices of "del" 
-			{	ss2 = split(s[1].substr(st_br,en_br-st_br),del2);
-				
-				for (int i=1; i<ss2.size(); i++) params.push_back(ss2[i]);	
-				open_bracket = true;
-			}
-			if ((s.size()>1) && (look_up(s[1],'}').size()>0))
-			{	open_bracket = false;
-				param_list.push_back(params);
-				params.clear();
-			}
-			if (((s.size()>1) && (look_up(s[1],'{').size()==0) && (look_up(s[1],'}').size()==0)) || (s.size()==1))
-				param_list.push_back(params);    //param_list stores parameters inside the {} and leaves space for other parameters
-			}
-			}
-			else if (open_bracket == true)
-			{	vector<string> s = getline(file);
-			if (s.size()>0)
-			{
-				vector<string> ss2;
+    for (size_t i = 0; i < config_data_.keywords.size(); ++i) {
+        if (aquiutils::tolower(config_data_.keywords[i]) == "well") {
+            CWell well;
+            well.name = config_data_.values[i];
+            well.vz_delay = 0.0;
 
-				ss2 = split(s[0],del2);
-				int ii;
-				if (ss2[0]=="") ii = 1; else ii=0;
-				for (int i=ii; i<ss2.size(); i++) params.push_back(ss2[i]);		
+            // Find distribution type
+            for (size_t j = 0; j < config_data_.param_names[i].size(); ++j) {
+                if (aquiutils::tolower(config_data_.param_names[i][j]) == "distribution") {
+                    well.distribution = config_data_.param_values[i][j];
+                    well.setDistributionType(config_data_.param_values[i][j]);
+                    break;
+                }
+            }
 
-				if (look_up(s[0],'}').size()>0)
-				{	open_bracket = false;
-					param_list.push_back(params);
-					params.clear();
-				}	
-			}
-			}
-		}	
-		for (int i=0; i<lid_config.keyword.size(); i++)
-		{	vector<string> pp_name, pp_val;
-			vector<string> param_est_no;
-		for (int j=0; j<param_list[i].size(); j++)
-		{
-			if (param_list[i][j]!="") 
-			{
-				pp_name.push_back(split(param_list[i][j],'=')[0]);
-				if (split(param_list[i][j],'=')[1].substr(0,2)=="p[")   //e.g. theta_r=p[0]
-				{
-					param_est_no.push_back(split(split(param_list[i][j],'=')[1],brackets)[1]);
-					vector<int> X;
-					pp_val.push_back("0");  
-				}
-				else
-				{
-					param_est_no.push_back("");
-					pp_val.push_back(split(param_list[i][j],'=')[1]);
-				}
-			}
-		}
-		lid_config.param_names.push_back(pp_name);
-		lid_config.param_vals.push_back(pp_val);
-		lid_config.est_param.push_back(param_est_no);
-		}
+            // Parse well properties
+            for (size_t j = 0; j < config_data_.param_names[i].size(); ++j) {
+                std::string pname = config_data_.param_names[i][j];
+                double pval = std::atof(config_data_.param_values[i][j].c_str());
+
+                well.setParameter(pname, pval);
+
+                // Link to parameter if specified
+                const std::string& est_param = config_data_.est_param_names[i][j];
+                if (!est_param.empty()) {
+                    int param_idx = findParameter(est_param);
+                    if (param_idx >= 0) {
+                        parameters_[param_idx].locations.push_back(well.name);
+                        parameters_[param_idx].quantities.push_back(pname);
+                        parameters_[param_idx].location_types.push_back(0); // 0 = well
+                    }
+                }
+            }
+
+            wells_.push_back(well);
+        }
+    }
 }
 
-void CGWA::setparams(int param_no, double value)
+// ============================================================================
+// Observed Data Loading
+// ============================================================================
+
+void CGWA::loadObservedData()
 {
-	for (int i=0; i<parameters[param_no].location.size(); i++)
-	{	if (parameters[param_no].location_type[i] == 1)
-			Tracer[lookup_tracers(parameters[param_no].location[i])].set_val(parameters[param_no].quan[i],value); 
-		if (parameters[param_no].location_type[i] == 0)
-			Well[lookup_wells(parameters[param_no].location[i])].set_val(parameters[param_no].quan[i],value); 
-	}
+    observations_.clear();
 
+    for (size_t i = 0; i < config_data_.keywords.size(); ++i) {
+        if (aquiutils::tolower(config_data_.keywords[i]) == "observed") {
+            ObservedData obs;
+            obs.name = config_data_.values[i];
 
-	for (int i=0; i<measured_quan.size(); i++)
-		if (measured_quan[i].std_to_param == param_no)	
-			obs_std[measured_quan[i].std_no] = value;
+            // Parse observation properties
+            for (size_t j = 0; j < config_data_.param_names[i].size(); ++j) {
+                std::string pname = aquiutils::tolower(config_data_.param_names[i][j]);
+                const std::string& pval_str = config_data_.param_values[i][j];
 
-	set_constant_inputs();
+                if (pname == "well") {
+                    obs.well_index = findWell(pval_str);
+                }
+                else if (pname == "tracer") {
+                    obs.tracer_index = findTracer(pval_str);
+                }
+                else if (pname == "std_no") {
+                    obs.std_parameter_index = std::atoi(pval_str.c_str());
+                }
+                else if (pname == "error_structure") {
+                    obs.error_structure = std::atoi(pval_str.c_str());
+                }
+                else if (pname == "observed_data") {
+                    obs.filename = pval_str;
+                    obs.data = TimeSeries<double>(settings_.input_path + pval_str);
+                }
+                else if (pname == "detect_limit_value") {
+                    obs.has_detection_limit = true;
+                    obs.detection_limit_value = std::atof(pval_str.c_str());
+                }
+                else if (pname == "count_max") {
+                    obs.count_max = (std::atoi(pval_str.c_str()) != 0);
+                }
+            }
 
+            observations_.push_back(obs);
+        }
+    }
+
+    // Calculate max data count per well
+    std::vector<int> max_counts(wells_.size(), 0);
+    for (const auto& obs : observations_) {
+        if (obs.well_index >= 0 && obs.well_index < static_cast<int>(max_counts.size())) {
+            max_counts[obs.well_index] = std::max(max_counts[obs.well_index],
+                                                  static_cast<int>(obs.data.size()));
+        }
+    }
+
+    for (auto& obs : observations_) {
+        if (obs.well_index >= 0 && obs.well_index < static_cast<int>(max_counts.size())) {
+            obs.max_data_count = max_counts[obs.well_index];
+        }
+    }
 }
 
-void CGWA::getmodeled()
+// ============================================================================
+// Standard Deviation Parameters Setup
+// ============================================================================
+
+void CGWA::setupStdDevParameters()
 {
-	modeled = CBTCSet(measured_quan.size());
-	//vector<double> young_area;
-	double oldest_time = getoldest();
+    std::vector<int> std_indices;
 
-	for (int i=0; i<Well.size(); i++)
-	{	Well[i].createdistribution(Well[i].params,oldest_time,1000,0.02);
-		//young_area.push_back(Well[i].young_age_distribution.integrate());
-	}
+    // Find unique std_no values
+    for (auto& obs : observations_) {
+        if (std::find(std_indices.begin(), std_indices.end(),
+                      obs.std_parameter_index) == std_indices.end()) {
+            std_indices.push_back(obs.std_parameter_index);
 
-	for (int i=0; i<measured_quan.size(); i++)
-	{
-		modeled.names.push_back(measured_quan[i].name);
-		for (int j=0; j<measured_quan[i].observed_data.n; j++)
-			modeled.BTC[i].append(measured_quan[i].observed_data.t[j],Tracer[measured_quan[i].quan].calc_conc(measured_quan[i].observed_data.t[j], Well[measured_quan[i].id].young_age_distribution, Well[measured_quan[i].id].fraction_old,Well[measured_quan[i].id].vz_delay,fixed_old_tracer, Well[measured_quan[i].id].age_old,Well[measured_quan[i].id].fm)); 
-	}
+            // Create parameter for this std deviation
+            ParameterRange param;
+            param.name = "std_" + std::to_string(obs.std_parameter_index);
+            param.low = std::exp(-4.0);
+            param.high = std::exp(4.0);
+            param.fixed = false;
+            param.logarithmic = true;
+            param.apply_to_all = true;
+
+            obs.std_parameter_index = parameters_.size();
+            parameters_.push_back(param);
+            parameter_values_.push_back(std::sqrt(param.low * param.high));
+        }
+    }
+
+    obs_std_devs_.resize(std_indices.size());
 }
 
-CBTCSet CGWA::Do_project()
+// ============================================================================
+// Source Tracer Linking
+// ============================================================================
+
+void CGWA::linkSourceTracers()
 {
-	projected = CBTCSet(Well.size()*Tracer.size());
-	double oldest_time = getoldest();
-	for (int i=0; i<Well.size(); i++)
-		Well[i].createdistribution(Well[i].params,oldest_time,1000,0.02);
-	for (int i=0; i<Well.size(); i++)
-		for (int j=0; j<Tracer.size(); j++)	
-		{
-			projected.names.push_back(Well[i].name+"_"+Tracer[j].name );
-			for (int t=project_start; t<project_finish; t+=project_interval)
-				projected.BTC[j+i*Tracer.size()].append(t,Tracer[j].calc_conc(t, Well[i].young_age_distribution, Well[i].fraction_old,Well[i].vz_delay)); 
-		}
-	return projected;
+    for (auto& tracer : tracers_) {
+        if (!tracer.getSourceTracerName().empty()) {
+            int source_idx = findTracer(tracer.getSourceTracerName());
+            if (source_idx >= 0) {
+                tracer.setSourceTracer(&tracers_[source_idx]);
+            }
+        }
+    }
 }
 
-double CGWA::getlogp()
+// ============================================================================
+// Lookup Methods
+// ============================================================================
+
+int CGWA::findParameter(const std::string& name) const
 {
-	getmodeled();
-	double logp=0;
-	for (int i=0; i<measured_quan.size(); i++)
-	{
-		double data_ratio = 1;
-		if (measured_quan[i].count_max == true)
-			data_ratio = (1/double(measured_quan[i].observed_data.n));
-		//data_ratio = (double(measured_quan[i].max_data_no)/double(measured_quan[i].observed_data.n));
-
-		if (measured_quan[i].detect_limit==true)
-		{
-			if (measured_quan[i].error_structure==0)
-				logp+=-norm2(max(measured_quan[i].observed_data,measured_quan[i].detect_limit_value)>max(modeled.BTC[i],measured_quan[i].detect_limit_value))/(2*obs_std[measured_quan[i].std_no]*obs_std[measured_quan[i].std_no])-log(obs_std[measured_quan[i].std_no])*modeled.BTC[i].n;
-			if (measured_quan[i].error_structure==1)
-				logp+=-norm2((modeled.BTC[i].Log(measured_quan[i].detect_limit_value)>measured_quan[i].observed_data.Log(measured_quan[i].detect_limit_value)))/(2*obs_std[measured_quan[i].std_no]*obs_std[measured_quan[i].std_no])-log(obs_std[measured_quan[i].std_no])*modeled.BTC[i].n;
-		}
-		else
-		{
-			if (measured_quan[i].error_structure==0)		
-				logp+=data_ratio*(-norm2(modeled.BTC[i]>measured_quan[i].observed_data)/(2*obs_std[measured_quan[i].std_no]*obs_std[measured_quan[i].std_no])-log(obs_std[measured_quan[i].std_no])*modeled.BTC[i].n);
-			if (measured_quan[i].error_structure==1)
-				logp+=data_ratio*(-norm2((modeled.BTC[i].Log(1e-8)>measured_quan[i].observed_data.Log(1e-8)))/(2*obs_std[measured_quan[i].std_no] *obs_std[measured_quan[i].std_no])-log(obs_std[measured_quan[i].std_no])*modeled.BTC[i].n);
-		}
-		
-	}
-			
-	if ((logp==logp)==false) logp=-30000;
-	return logp;
-
+    for (size_t i = 0; i < parameters_.size(); ++i) {
+        if (aquiutils::tolower(name) == aquiutils::tolower(parameters_[i].name)) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
 }
 
-double CGWA::getoldest()
+int CGWA::findTracer(const std::string& name) const
 {
-	double oldest=-10000;
-	for (int i=0; i<Tracer.size(); i++)
-	{
-		if (Tracer[i].input.n>1) oldest = max(Tracer[i].input.t[Tracer[i].input.n-1]-Tracer[i].input.t[0],oldest);
-	}
-	return oldest;
+    for (size_t i = 0; i < tracers_.size(); ++i) {
+        if (aquiutils::tolower(name) == aquiutils::tolower(tracers_[i].getName())) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
 }
 
-void CGWA::set_constant_inputs()
+int CGWA::findWell(const std::string& name) const
 {
-	for (int i=0; i<Tracer.size(); i++)
-		if (Tracer[i].constant_input == true) 
-		{	Tracer[i].input.clear();
-			Tracer[i].input.append(0,Tracer[i].constant_input_val);
-			Tracer[i].input.append(3000,Tracer[i].constant_input_val);
-		}
+    for (size_t i = 0; i < wells_.size(); ++i) {
+        if (aquiutils::tolower(name) == aquiutils::tolower(wells_[i].name)) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
 }
 
-int CGWA::lookup_parameters(string S)
-{
-	int out = -1;
-	for (int i = 0; i < parameters.size(); i++)
-		if (tolower(S) == tolower(parameters[i].name))
-			out = i;
+// ============================================================================
+// Parameter Management
+// ============================================================================
 
-	return out;
+const ParameterRange& CGWA::getParameter(size_t index) const
+{
+    if (index >= parameters_.size()) {
+        throw std::out_of_range("Parameter index out of range");
+    }
+    return parameters_[index];
 }
 
-int CGWA::lookup_tracers(string S)
+void CGWA::setParameterValue(size_t index, double value)
 {
-	int out = -1;
-	for (int i = 0; i < Tracer.size(); i++)
-		if (tolower(S) == tolower(Tracer[i].name))
-			out = i;
+    if (index >= parameter_values_.size()) {
+        throw std::out_of_range("Parameter index out of range");
+    }
 
-	return out;
+    parameter_values_[index] = value;
+    applyParameterToModel(index, value);
 }
 
-int CGWA::lookup_wells(string S)
+void CGWA::setAllParameterValues(const std::vector<double>& values)
 {
-	int out = -1;
-	for (int i = 0; i < Well.size(); i++)
-		if (tolower(S) == tolower(Well[i].name))
-			out = i;
+    if (values.size() != parameter_values_.size()) {
+        throw std::invalid_argument("Parameter value count mismatch");
+    }
 
-	return out;
+    for (size_t i = 0; i < values.size(); ++i) {
+        parameter_values_[i] = values[i];
+        applyParameterToModel(i, values[i]);
+    }
+}
+
+void CGWA::applyParameterToModel(size_t param_index, double value)
+{
+    if (param_index >= parameters_.size()) {
+        return;
+    }
+
+    const ParameterRange& param = parameters_[param_index];
+
+    // Apply to wells and tracers
+    for (size_t i = 0; i < param.locations.size(); ++i) {
+        if (param.location_types[i] == 1) {
+            // Apply to tracer
+            int tracer_idx = findTracer(param.locations[i]);
+            if (tracer_idx >= 0) {
+                tracers_[tracer_idx].setParameter(param.quantities[i], value);
+            }
+        }
+        else if (param.location_types[i] == 0) {
+            // Apply to well
+            int well_idx = findWell(param.locations[i]);
+            if (well_idx >= 0) {
+                wells_[well_idx].setParameter(param.quantities[i], value);
+            }
+        }
+    }
+
+    // Check if this is a std deviation parameter
+    for (auto& obs : observations_) {
+        if (obs.std_parameter_index == static_cast<int>(param_index)) {
+            if (obs.std_parameter_index < static_cast<int>(obs_std_devs_.size())) {
+                obs_std_devs_[obs.std_parameter_index] = value;
+            }
+        }
+    }
+
+    updateConstantInputs();
+}
+
+void CGWA::updateConstantInputs()
+{
+    for (auto& tracer : tracers_) {
+        if (tracer.hasConstantInput()) {
+            tracer.setConstantInput(tracer.getConstantInputValue());
+        }
+    }
+}
+
+// ============================================================================
+// Forward Modeling
+// ============================================================================
+
+void CGWA::runForwardModel()
+{
+    modeled_data_ = TimeSeriesSet<double>(observations_.size());
+
+    double oldest_time = getOldestInputTime();
+
+    // Create age distributions for all wells
+    for (auto& well : wells_) {
+        well.createDistribution(oldest_time, 1000, 0.02);
+    }
+
+    // Calculate concentrations at observation times
+    for (size_t i = 0; i < observations_.size(); ++i) {
+        const ObservedData& obs = observations_[i];
+
+        if (obs.well_index < 0 || obs.well_index >= static_cast<int>(wells_.size()) ||
+            obs.tracer_index < 0 || obs.tracer_index >= static_cast<int>(tracers_.size())) {
+            continue;
+        }
+
+        const CWell& well = wells_[obs.well_index];
+        const CTracer& tracer = tracers_[obs.tracer_index];
+
+        modeled_data_.setname(i, obs.name);
+
+        for (size_t j = 0; j < obs.data.size(); ++j) {
+            double time = obs.data.getTime(j);
+            double conc = tracer.calculateConcentration(
+                time,
+                well.young_age_distribution,
+                well.fraction_old,
+                well.vz_delay,
+                settings_.fixed_old_tracer,
+                well.age_old,
+                well.fm
+                );
+
+            modeled_data_[i].append(time, conc);
+        }
+    }
+}
+
+TimeSeriesSet<double> CGWA::runProjection()
+{
+    if (!settings_.project_enabled) {
+        return TimeSeriesSet<double>();
+    }
+
+    projected_data_ = TimeSeriesSet<double>(wells_.size() * tracers_.size());
+
+    double oldest_time = getOldestInputTime();
+
+    // Create age distributions for all wells
+    for (auto& well : wells_) {
+        well.createDistribution(oldest_time, 1000, 0.02);
+    }
+
+    // Project concentrations over time
+    size_t index = 0;
+    for (size_t i = 0; i < wells_.size(); ++i) {
+        const CWell& well = wells_[i];
+
+        for (size_t j = 0; j < tracers_.size(); ++j) {
+            const CTracer& tracer = tracers_[j];
+
+            projected_data_.setname(index, well.name + "_" + tracer.getName());
+
+            for (double t = settings_.project_start;
+                 t < settings_.project_finish;
+                 t += settings_.project_interval) {
+
+                double conc = tracer.calculateConcentration(
+                    t,
+                    well.young_age_distribution,
+                    well.fraction_old,
+                    well.vz_delay,
+                    settings_.fixed_old_tracer,
+                    well.age_old,
+                    well.fm
+                    );
+
+                projected_data_[index].append(t, conc);
+            }
+
+            ++index;
+        }
+    }
+
+    return projected_data_;
+}
+
+double CGWA::getOldestInputTime() const
+{
+    double oldest = -10000.0;
+
+    for (const auto& tracer : tracers_) {
+        const TimeSeries<double>& input = tracer.getInput();
+        if (input.size() > 1) {
+            double duration = input.getTime(input.size() - 1) - input.getTime(0);
+            oldest = std::max(oldest, duration);
+        }
+    }
+
+    return oldest;
+}
+
+// ============================================================================
+// Log-Likelihood Calculation
+// ============================================================================
+
+double CGWA::calculateLogLikelihood()
+{
+    runForwardModel();
+
+    double log_likelihood = 0.0;
+
+    for (size_t i = 0; i < observations_.size(); ++i) {
+        log_likelihood += calculateObservationLikelihood(i);
+    }
+
+    // Check for NaN
+    if (std::isnan(log_likelihood)) {
+        log_likelihood = -30000.0;
+    }
+
+    return log_likelihood;
+}
+
+double CGWA::calculateObservationLikelihood(size_t obs_index) const
+{
+    if (obs_index >= observations_.size()) {
+        return 0.0;
+    }
+
+    const ObservedData& obs = observations_[obs_index];
+
+    if (obs.std_parameter_index < 0 ||
+        obs.std_parameter_index >= static_cast<int>(obs_std_devs_.size())) {
+        return 0.0;
+    }
+
+    double std_dev = obs_std_devs_[obs.std_parameter_index];
+    double variance = std_dev * std_dev;
+
+    const TimeSeries<double>& observed = obs.data;
+    const TimeSeries<double>& modeled = modeled_data_[obs_index];
+
+    // Data ratio for normalization
+    double data_ratio = 1.0;
+    if (obs.count_max) {
+        data_ratio = 1.0 / static_cast<double>(observed.size());
+    }
+
+    double log_p = 0.0;
+
+    if (obs.has_detection_limit) {
+        // Handle detection limit
+        TimeSeries<double> obs_clamped = max(observed, obs.detection_limit_value);
+        TimeSeries<double> mod_clamped = max(modeled, obs.detection_limit_value);
+
+        if (obs.error_structure == 0) {
+            // Normal error structure
+            log_p = -norm2(obs_clamped > mod_clamped) / (2.0 * variance) -
+                    std::log(std_dev) * modeled.size();
+        }
+        else if (obs.error_structure == 1) {
+            // Log-normal error structure
+            TimeSeries<double> obs_log = obs_clamped.log(obs.detection_limit_value);
+            TimeSeries<double> mod_log = mod_clamped.log(obs.detection_limit_value);
+            log_p = -norm2(mod_log > obs_log) / (2.0 * variance) -
+                    std::log(std_dev) * modeled.size();
+        }
+    }
+    else {
+        // No detection limit
+        if (obs.error_structure == 0) {
+            // Normal error structure
+            log_p = data_ratio * (-norm2(modeled > observed) / (2.0 * variance) -
+                                  std::log(std_dev) * modeled.size());
+        }
+        else if (obs.error_structure == 1) {
+            // Log-normal error structure
+            TimeSeries<double> obs_log = observed.log(1e-8);
+            TimeSeries<double> mod_log = modeled.log(1e-8);
+            log_p = data_ratio * (-norm2(mod_log > obs_log) / (2.0 * variance) -
+                                  std::log(std_dev) * modeled.size());
+        }
+    }
+
+    return log_p;
+}
+
+// ============================================================================
+// Serialization / Output
+// ============================================================================
+
+std::string CGWA::parametersToString() const
+{
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(6);
+
+    oss << "=== Model Configuration ===\n\n";
+
+    // Wells
+    oss << "Wells (" << wells_.size() << "):\n";
+    for (size_t i = 0; i < wells_.size(); ++i) {
+        oss << "\n" << wells_[i].parametersToString();
+    }
+
+    // Tracers
+    oss << "\nTracers (" << tracers_.size() << "):\n";
+    for (size_t i = 0; i < tracers_.size(); ++i) {
+        oss << "\n" << tracers_[i].parametersToString();
+    }
+
+    // Parameters (if inverse modeling)
+    if (inverse_enabled_) {
+        oss << "\nInverse Modeling Parameters (" << parameters_.size() << "):\n";
+        for (size_t i = 0; i < parameters_.size(); ++i) {
+            const ParameterRange& param = parameters_[i];
+            oss << "  " << param.name << ": "
+                << "value=" << parameter_values_[i] << ", "
+                << "range=[" << param.low << ", " << param.high << "], "
+                << "log=" << (param.logarithmic ? "yes" : "no") << ", "
+                << "fixed=" << (param.fixed ? "yes" : "no") << "\n";
+        }
+    }
+
+    // Observations
+    oss << "\nObservations (" << observations_.size() << "):\n";
+    for (size_t i = 0; i < observations_.size(); ++i) {
+        const ObservedData& obs = observations_[i];
+        oss << "  " << obs.name << ": "
+            << "well=" << obs.well_index << ", "
+            << "tracer=" << obs.tracer_index << ", "
+            << "data_points=" << obs.data.size() << "\n";
+    }
+
+    return oss.str();
+}
+
+void CGWA::writeModelSummary(std::ostream& out) const
+{
+    out << parametersToString();
+}
+
+void CGWA::writeParameterValues(std::ostream& out) const
+{
+    out << std::fixed << std::setprecision(8);
+
+    for (size_t i = 0; i < parameters_.size(); ++i) {
+        out << parameters_[i].name << "\t" << parameter_values_[i] << "\n";
+    }
 }

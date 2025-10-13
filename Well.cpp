@@ -1,404 +1,646 @@
 #include "Well.h"
 #include "Distribution.h"
-#include "StringOP.h"
+#include "Utilities.h"
+#include "Vector.h"
+#include <cmath>
+#include <algorithm>
+#include <sstream>
+#include <iomanip>
 
+// ============================================================================
+// Constructors
+// ============================================================================
 
-CWell::CWell(void)
+CWell::CWell()
+    : name_("")
+    , distribution_type_("")
+    , fraction_old_(0.0)
+    , age_old_(0.0)
+    , fraction_modern_(0.0)
+    , vz_delay_(0.0)
+    , histogram_bin_count_(0)
+    , histogram_bin_size_(0.0)
 {
+    // Initialize public members for backward compatibility
+    name = name_;
+    distribution = distribution_type_;
+    fraction_old = fraction_old_;
+    age_old = age_old_;
+    fm = fraction_modern_;
+    vz_delay = vz_delay_;
+    Histogram_bin_num = histogram_bin_count_;
+    Histogram_binsize = histogram_bin_size_;
 }
 
-
-CWell::~CWell(void)
+CWell::CWell(const std::string& well_name)
+    : CWell()
 {
+    name_ = well_name;
+    name = name_;
 }
 
-CWell::CWell(const CWell &W)
+CWell::CWell(const CWell& other)
+    : name_(other.name_)
+    , distribution_type_(other.distribution_type_)
+    , parameters_(other.parameters_)
+    , young_age_distribution_(other.young_age_distribution_)
+    , fraction_old_(other.fraction_old_)
+    , age_old_(other.age_old_)
+    , fraction_modern_(other.fraction_modern_)
+    , vz_delay_(other.vz_delay_)
+    , histogram_bin_count_(other.histogram_bin_count_)
+    , histogram_bin_size_(other.histogram_bin_size_)
 {
-	fraction_old = W.fraction_old;
-	young_age_distribution = W.young_age_distribution;
-	params = W.params;
-	name = W.name;
-	distribution = W.distribution;
-	hist_bin_num = W.hist_bin_num;
-	hist_binsize = W.hist_binsize;
-	vz_delay = W.vz_delay;
-	age_old = W.age_old;
-	fm = W.fm;
+    // Copy to public members
+    name = name_;
+    distribution = distribution_type_;
+    params = parameters_;
+    young_age_distribution = young_age_distribution_;
+    fraction_old = fraction_old_;
+    age_old = age_old_;
+    fm = fraction_modern_;
+    vz_delay = vz_delay_;
+    Histogram_bin_num = histogram_bin_count_;
+    Histogram_binsize = histogram_bin_size_;
 }
 
-CWell& CWell::operator=(const CWell &m)
+CWell& CWell::operator=(const CWell& other)
 {
-	fraction_old = m.fraction_old;
-	young_age_distribution = m.young_age_distribution;
-	name = m.name;
-	params = m.params;
-	distribution = m.distribution;
-	hist_bin_num = m.hist_bin_num;
-	hist_binsize = m.hist_binsize;
-	vz_delay = m.vz_delay;
-	age_old = m.age_old;
-	fm = m.fm;
-	return *this;
+    if (this != &other) {
+        name_ = other.name_;
+        distribution_type_ = other.distribution_type_;
+        parameters_ = other.parameters_;
+        young_age_distribution_ = other.young_age_distribution_;
+        fraction_old_ = other.fraction_old_;
+        age_old_ = other.age_old_;
+        fraction_modern_ = other.fraction_modern_;
+        vz_delay_ = other.vz_delay_;
+        histogram_bin_count_ = other.histogram_bin_count_;
+        histogram_bin_size_ = other.histogram_bin_size_;
+
+        // Sync public members
+        name = name_;
+        distribution = distribution_type_;
+        params = parameters_;
+        young_age_distribution = young_age_distribution_;
+        fraction_old = fraction_old_;
+        age_old = age_old_;
+        fm = fraction_modern_;
+        vz_delay = vz_delay_;
+        Histogram_bin_num = histogram_bin_count_;
+        Histogram_binsize = histogram_bin_size_;
+    }
+    return *this;
 }
 
-void CWell::createdistribution(vector<double> pdfparams, double tlast, int numinc, double mult)
+// ============================================================================
+// Property Setters
+// ============================================================================
+
+void CWell::setDistributionType(const std::string& type)
 {
-	CDistribution D;
-	D.name = distribution;
-	CBTC A;
-	if ((distribution=="dirac") || (distribution=="piston"))
-		young_age_distribution = creat_age_dist_dirac(pdfparams, tlast, numinc, mult);
-	if ((distribution=="gamma"))
-		young_age_distribution = creat_age_dist_Gamma(pdfparams, tlast, numinc, mult);
-	if ((distribution=="igaussian"))
-		young_age_distribution = creat_age_dist_InvG(pdfparams, tlast, numinc, mult);
-	if ((distribution=="lognormal"))
-		young_age_distribution = creat_age_dist_lognormal(pdfparams, tlast, numinc, mult);
-	if ((distribution=="hist"))
-		young_age_distribution = creat_age_dist_Hist(pdfparams, tlast, numinc, mult);
-	if ((distribution=="dispersion"))
-		young_age_distribution = creat_age_dispersion(pdfparams, tlast, numinc, mult);
-	if ((distribution=="exp") || (distribution=="exponential"))
-		young_age_distribution = creat_age_dist_exp(pdfparams, tlast, numinc, mult);
-	if (distribution=="shifted_exp") 
-		young_age_distribution = creat_age_dist_Shexp(pdfparams, tlast, numinc, mult);
-	if (distribution=="levy") 
-		young_age_distribution = creat_age_dist_Levy(pdfparams, tlast, numinc, mult);
-	if (distribution=="shifted_levy") 
-		young_age_distribution = creat_age_dist_ShLevy(pdfparams, tlast, numinc, mult);
-	if (distribution=="generalized_igaussian") 
-		young_age_distribution = creat_age_dist_GIG(pdfparams, tlast, numinc, mult);
-	
+    distribution_type_ = type;
+    distribution = type;
+
+    // Resize parameters vector for this distribution type
+    int param_count = getParameterCount(type, histogram_bin_count_);
+    if (param_count > 0) {
+        parameters_.resize(param_count, 0.0);
+        params.resize(param_count, 0.0);
+    }
 }
 
-CBTC CWell::creat_age_dist_dirac (vector<double> params, double tlast, int numinc, double mult)
+// ============================================================================
+// Parameter Setting
+// ============================================================================
+
+bool CWell::setParameter(const std::string& param_name, double value)
 {
-	CBTC Age_Dist(numinc+1); 
-	double dt0;
-	if (mult!=0)
-		dt0 = tlast/(1+pow(1+mult,numinc))*mult;
-	else
-		dt0 = tlast/numinc;
+    std::vector<char> delimiters = {'[', ']', ':'};
+    std::vector<std::string> parts = aquiutils::split(param_name, delimiters);
 
-	Age_Dist.t[0] = 0;
-	for (int i=1; i<numinc+1; i++)
-		Age_Dist.t[i] = Age_Dist.t[i-1]+dt0*pow(1+mult,i);
+    if (parts.size() == 1) {
+        // Simple parameter name
+        std::string lower_name = aquiutils::tolower(aquiutils::trim(parts[0]));
 
-	for (int i=1; i<numinc+1; i++)
-	{	Age_Dist.C[i] = 0; 
-		if ((0.5*(Age_Dist.t[i-1]+Age_Dist.t[i])<params[0]) && (0.5*(Age_Dist.t[i]+Age_Dist.t[i+1])>params[0])) 
-			Age_Dist.C[i] += 2.0/(Age_Dist.t[i+1]-Age_Dist.t[i-1]);
-	} //check this!
-	
-		return Age_Dist;
-}
-//*************************************************************************************************************************
+        if (lower_name == "f") {
+            setFractionOld(value);
+            fraction_old = value;  // Sync public member
+            return true;
+        }
+        else if (lower_name == "fm") {
+            setFractionModern(value);
+            fm = value;
+            return true;
+        }
+        else if (lower_name == "vz_delay") {
+            setVzDelay(value);
+            vz_delay = value;
+            return true;
+        }
+        else if (lower_name == "age_old") {
+            setAgeOld(value);
+            age_old = value;
+            return true;
+        }
+        return false;
+    }
+    else if (parts.size() == 2) {
+        // Array-style parameter like "param[0]"
+        std::string lower_name = aquiutils::tolower(aquiutils::trim(parts[0]));
 
-// 2-exp
-CBTC CWell::creat_age_dist_exp(vector<double> params, double tlast, int numinc, double mult)
-{
-	CBTC Age_Dist(numinc+1); 
-	double dt0;
-	if (mult!=0)
-		dt0 = tlast/(1+pow(1+mult,numinc))*mult;
-	else
-		dt0 = tlast/numinc;
+        if (lower_name == "param") {
+            int index = std::atoi(parts[1].c_str());
+            if (index >= 0 && index < static_cast<int>(parameters_.size())) {
+                parameters_[index] = value;
+                params[index] = value;  // Sync public member
+                return true;
+            }
+        }
+        return false;
+    }
 
-	Age_Dist.t[0] = 0;
-	for (int i=1; i<numinc+1; i++)
-		Age_Dist.t[i] = Age_Dist.t[i-1]+dt0*pow(1+mult,i);
-	
-	for (int i=0; i<numinc+1; i++)
-		Age_Dist.C[i] = (1/params[0])*exp(-Age_Dist.t[i]/params[0]);
-
-	return Age_Dist;
-
-}
-//*************************************************************************************************************************
-
-//4-lognormal
-CBTC CWell::creat_age_dist_lognormal(vector<double> params,double tlast, int numinc, double mult)
-{
-	CBTC Age_Dist(numinc+1); 
-	double dt0;
-	if (mult!=1)
-		dt0 = tlast/(1+pow(1+mult,numinc))*mult;
-	else
-		dt0 = tlast/numinc;
-
-	Age_Dist.t[0] = 0;
-	for (int i=1; i<numinc+1; i++)
-		Age_Dist.t[i] = Age_Dist.t[i-1]+dt0*pow(1+mult,i-1);
-	
-	Age_Dist.C[0]=0;
-	for (int i=1; i<numinc+1; i++)
-		Age_Dist.C[i] = 1/(Age_Dist.t[i]*log(params[1])*pow(2*(atan(1.0)*4),0.5))*exp(-pow(log(Age_Dist.t[i])-log(params[0]),2)/(2*pow(params[1],2)));
-	return Age_Dist;
-}
-//*************************************************************************************************************************
-
-//5-Inv_Gaussian
-CBTC CWell::creat_age_dist_InvG(vector<double> params, double tlast, int numinc, double mult)
-{
-	double pi = 4*atan(1.0);
-	CBTC Age_Dist(numinc+1); 
-	double lambda = pow(params[0],3)/pow(params[1],2);
-	double dt0;
-	if (mult!=1)
-		dt0 = tlast/(1+pow(1+mult,numinc))*mult;
-	else
-		dt0 = tlast/numinc;
-
-	Age_Dist.t[0] = 1e-12;
-	for (int i=1; i<numinc+1; i++)
-		Age_Dist.t[i] = Age_Dist.t[i-1]+dt0*pow(1+mult,i);
-	
-	for (int i=0; i<numinc+1; i++)
-		//Soroosh
-		Age_Dist.C[i] = pow(lambda/(2*pi*pow(Age_Dist.t[i],3)),0.5)*exp(-lambda*pow(Age_Dist.t[i]-params[0],2)/(2*pow(params[0],2)*Age_Dist.t[i]));	
-
-	return Age_Dist;
+    return false;
 }
 
-//5-Inv_Gaussian
-CBTC CWell::creat_age_dist_InvG_mu_lambda(vector<double> params, double tlast, int numinc, double mult)
+int CWell::getParameterCount(const std::string& distribution_name, int n_bins)
 {
-	double pi = 4 * atan(1.0);
-	CBTC Age_Dist(numinc + 1);
-	double lambda = params[1];
-	double dt0;
-	if (mult != 1)
-		dt0 = tlast / (1 + pow(1 + mult, numinc))*mult;
-	else
-		dt0 = tlast / numinc;
+    std::string lower_name = aquiutils::tolower(distribution_name);
 
-	Age_Dist.t[0] = 1e-12;
-	for (int i = 1; i<numinc + 1; i++)
-		Age_Dist.t[i] = Age_Dist.t[i - 1] + dt0*pow(1 + mult, i);
+    if (lower_name == "dirac" || lower_name == "piston") return 1;
+    if (lower_name == "gamma") return 2;
+    if (lower_name == "igaussian") return 2;
+    if (lower_name == "igaussianm") return 4;
+    if (lower_name == "lognormal") return 2;
+    if (lower_name == "hist") return n_bins;
+    if (lower_name == "dispersion") return 2;
+    if (lower_name == "exp" || lower_name == "exponential") return 1;
+    if (lower_name == "shifted_exp") return 2;
+    if (lower_name == "levy") return 1;
+    if (lower_name == "shifted_levy") return 2;
+    if (lower_name == "generalized_igaussian") return 3;
 
-	for (int i = 0; i<numinc + 1; i++)
-		//Soroosh
-		Age_Dist.C[i] = pow(lambda / (2 * pi*pow(Age_Dist.t[i], 3)), 0.5)*exp(-lambda*pow(Age_Dist.t[i] - params[0], 2) / (2 * pow(params[0], 2)*Age_Dist.t[i]));
-
-	return Age_Dist;
-}
-//6-levy
-CBTC CWell::creat_age_dist_Levy(vector<double> params, double tlast, int numinc, double mult)
-{
-	double pi = 4*atan(1.0);
-	CBTC Age_Dist(numinc+1); 
-	double C_levy = params[0];
-	double dt0;
-	if (mult!=1)
-		dt0 = tlast/(1+pow(1+mult,numinc))*mult;
-	else
-		dt0 = tlast/numinc;
-	
-	Age_Dist.t[0] = 1e-12;
-	for (int i=1; i<numinc+1; i++)
-		Age_Dist.t[i] = Age_Dist.t[i-1]+dt0*pow(1+mult,i);
-	
-	for (int i=0; i<numinc+1; i++)		
-		Age_Dist.C[i] = pow(C_levy/(2*pi),0.5)*exp(-C_levy/(2*Age_Dist.t[i]))/pow(Age_Dist.t[i],1.5);	                  
-	
-	return Age_Dist;
+    return 0;
 }
 
-//7-shifted_levy
-CBTC CWell::creat_age_dist_ShLevy(vector<double> params, double tlast, int numinc, double mult)
+// ============================================================================
+// Distribution Creation
+// ============================================================================
+
+void CWell::createDistribution(double oldest_time, int num_intervals, double multiplier)
 {
-	double pi = 4*atan(1.0);
-	CBTC Age_Dist(numinc+1); 
-	double C_levy = params[0];
-	double t_shift = params[1];
-	double dt0;
-	if (mult!=1)
-		dt0 = tlast/(1+pow(1+mult,numinc))*mult;
-	else
-		dt0 = tlast/numinc;
-	
-	Age_Dist.t[0] = 1e-12;
-	for (int i=1; i<numinc+1; i++)
-		Age_Dist.t[i] = Age_Dist.t[i-1]+dt0*pow(1+mult,i);
-	
-	for (int i=0; i<numinc+1; i++)
-	{
-		if (Age_Dist.t[i]>t_shift)
-			Age_Dist.C[i] = pow(C_levy/(2*pi),0.5)*exp(-C_levy/(2*(Age_Dist.t[i]-t_shift)))/pow((Age_Dist.t[i]-t_shift),1.5);
-		else
-			Age_Dist.C[i] = 0;
-	}
-	
-	return Age_Dist;
+    std::string lower_type = aquiutils::tolower(distribution_type_);
+
+    if (lower_type == "dirac" || lower_type == "piston") {
+        young_age_distribution_ = createDiracDistribution(parameters_, oldest_time, num_intervals, multiplier);
+    }
+    else if (lower_type == "gamma") {
+        young_age_distribution_ = createGammaDistribution(parameters_, oldest_time, num_intervals, multiplier);
+    }
+    else if (lower_type == "igaussian") {
+        young_age_distribution_ = createInverseGaussianDistribution(parameters_, oldest_time, num_intervals, multiplier);
+    }
+    else if (lower_type == "lognormal") {
+        young_age_distribution_ = createLogNormalDistribution(parameters_, oldest_time, num_intervals, multiplier);
+    }
+    else if (lower_type == "hist") {
+        young_age_distribution_ = createHistogramDistribution(parameters_, histogram_bin_count_,
+                                                              histogram_bin_size_, oldest_time,
+                                                              num_intervals, multiplier);
+    }
+    else if (lower_type == "dispersion") {
+        young_age_distribution_ = createDispersionDistribution(parameters_, oldest_time, num_intervals, multiplier);
+    }
+    else if (lower_type == "exp" || lower_type == "exponential") {
+        young_age_distribution_ = createExponentialDistribution(parameters_, oldest_time, num_intervals, multiplier);
+    }
+    else if (lower_type == "shifted_exp") {
+        young_age_distribution_ = createShiftedExponentialDistribution(parameters_, oldest_time, num_intervals, multiplier);
+    }
+    else if (lower_type == "levy") {
+        young_age_distribution_ = createLevyDistribution(parameters_, oldest_time, num_intervals, multiplier);
+    }
+    else if (lower_type == "shifted_levy") {
+        young_age_distribution_ = createShiftedLevyDistribution(parameters_, oldest_time, num_intervals, multiplier);
+    }
+    else if (lower_type == "generalized_igaussian") {
+        young_age_distribution_ = createGeneralizedInverseGaussianDistribution(parameters_, oldest_time,
+                                                                               num_intervals, multiplier);
+    }
+
+    // Sync public member
+    young_age_distribution = young_age_distribution_;
 }
 
-//8-shifted_exp
-CBTC CWell::creat_age_dist_Shexp(vector<double> params, double tlast, int numinc, double mult)
+// ============================================================================
+// Static Distribution Functions
+// ============================================================================
+
+TimeSeries<double> CWell::createDiracDistribution(
+    const std::vector<double>& params,
+    double max_age,
+    int num_intervals,
+    double multiplier)
 {
-	double pi = 4*atan(1.0);
-	CBTC Age_Dist(numinc+1); 
-	double lambda = params[0];
-	double t_shift = params[1];
-	double dt0;
-	if (mult!=1)
-		dt0 = tlast/(1+pow(1+mult,numinc))*mult;
-	else
-		dt0 = tlast/numinc;
-	
-	Age_Dist.t[0] = 1e-12;
-	for (int i=1; i<numinc+1; i++)
-		Age_Dist.t[i] = Age_Dist.t[i-1]+dt0*pow(1+mult,i);
-	
-	for (int i=0; i<numinc+1; i++)
-	{
-		if (Age_Dist.t[i]>t_shift)
-			Age_Dist.C[i] = (1/lambda)*exp(-(Age_Dist.t[i]-t_shift)/lambda);
-		else
-			Age_Dist.C[i] = 0;
-	}
-	
-	return Age_Dist;
+    TimeSeries<double> age_dist(num_intervals + 1);
+
+    double dt0 = (multiplier != 0) ?
+                     max_age / (1 + std::pow(1 + multiplier, num_intervals)) * multiplier :
+                     max_age / num_intervals;
+
+    age_dist.setTime(0, 0.0);
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        age_dist.setTime(i, age_dist.getTime(i - 1) + dt0 * std::pow(1 + multiplier, i));
+    }
+
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        age_dist.setValue(i, 0.0);
+        double mid_age = 0.5 * (age_dist.getTime(i - 1) + age_dist.getTime(i));
+        double next_mid = (i < num_intervals) ?
+                              0.5 * (age_dist.getTime(i) + age_dist.getTime(i + 1)) : age_dist.getTime(i);
+
+        if (mid_age < params[0] && next_mid > params[0]) {
+            age_dist.setValue(i, 2.0 / (next_mid - age_dist.getTime(i - 1)));
+        }
+    }
+
+    return age_dist;
 }
 
-//9-Generalized Inverse Guassian
-CBTC CWell::creat_age_dist_GIG(vector<double> params, double tlast, int numinc, double mult)
+// ============================================================================
+// Serialization / Output
+// ============================================================================
+
+std::string CWell::parametersToString() const
 {
-	double pi = 4*atan(1.0);
-	CBTC Age_Dist(numinc+1); 
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(6);
 
-	double p = params[0];
-	double a = params[1];
-	double b = params[2];
+    oss << "Well: " << name_ << "\n";
+    oss << "  Distribution type: " << distribution_type_ << "\n";
+    oss << "  Distribution parameters: [";
+    for (size_t i = 0; i < parameters_.size(); ++i) {
+        if (i > 0) oss << ", ";
+        oss << parameters_[i];
+    }
+    oss << "]\n";
 
-	double dt0;
-	if (mult!=1)
-		dt0 = tlast/(1+pow(1+mult,numinc))*mult;
-	else
-		dt0 = tlast/numinc;
-	
-	Age_Dist.t[0] = 1e-12;
-	for (int i=1; i<numinc+1; i++)
-		Age_Dist.t[i] = Age_Dist.t[i-1]+dt0*pow(1+mult,i);
-	
-	for (int i=0; i<numinc+1; i++)
-		Age_Dist.C[i] = pow(Age_Dist.t[i],p-1)*exp(-(a*Age_Dist.t[i]+b/Age_Dist.t[i])/2);
-	
-	double area = Age_Dist.integrate();
-	return (1/area)*Age_Dist;
+    oss << "  Fraction old water: " << fraction_old_ << "\n";
+    oss << "  Age of old water: " << age_old_ << " years\n";
+    oss << "  Fraction modern: " << fraction_modern_ << "\n";
+    oss << "  VZ delay: " << vz_delay_ << " years\n";
+
+    if (distribution_type_ == "hist" || distribution_type_ == "histogram") {
+        oss << "  Histogram bins: " << histogram_bin_count_ << "\n";
+        oss << "  Histogram bin size: " << histogram_bin_size_ << "\n";
+    }
+
+    if (young_age_distribution_.size() > 0) {
+        oss << "  Age distribution computed: " << young_age_distribution_.size() << " points\n";
+    }
+
+    return oss.str();
 }
 
-//Dispersion
-CBTC CWell::creat_age_dispersion(vector<double> params, double tlast, int numinc, double mult)
+void CWell::writeInfo(std::ostream& out) const
 {
-	double pi = 4*atan(1.0);
-	CBTC Age_Dist(numinc+1); 
-	double dt0;
-	if (mult!=1)
-		dt0 = tlast/(1+pow(1+mult,numinc))*mult;
-	else
-		dt0 = tlast/numinc;
-
-	Age_Dist.t[0] = 1e-12;
-	for (int i=1; i<numinc+1; i++)
-		Age_Dist.t[i] = Age_Dist.t[i-1]+dt0*pow(1+mult,i);
-	
-	for (int i=0; i<numinc+1; i++)
-		Age_Dist.C[i] = 1/sqrt(2*pi*params[1]*Age_Dist.t[i])*exp(-pow(Age_Dist.t[i]-params[0],2)/(4*params[1]*Age_Dist.t[i]));	
-
-	return Age_Dist;
+    out << parametersToString();
 }
 
-CBTC CWell::creat_age_dist_Hist(vector<double> pdfparams, double tlast, int numinc, double mult)
+TimeSeries<double> CWell::createExponentialDistribution(
+    const std::vector<double>& params,
+    double max_age,
+    int num_intervals,
+    double multiplier)
 {
-	CBTC Age_Dist(numinc+1); 
-	double dt0;
-	if (mult!=0)
-		dt0 = tlast/(1+pow(1+mult,numinc))*mult;
-	else
-		dt0 = tlast/numinc;
+    TimeSeries<double> age_dist(num_intervals + 1);
 
-	Age_Dist.t[0] = 0;
-	for (int i=1; i<numinc+1; i++)
-		Age_Dist.t[i] = Age_Dist.t[i-1]+dt0*pow(1+mult,i-1);
-	
-	Age_Dist.C[0]=0;
-	for (int i=1; i<numinc+1; i++)
-	{	for (int j=0; j<hist_bin_num-1; j++)
-			if ((Age_Dist.t[i]>j*hist_binsize) && (Age_Dist.t[i]<=(j+1)*hist_binsize))
-				Age_Dist.C[i] = pdfparams[j]/hist_binsize;
-		if ((Age_Dist.t[i]>(hist_bin_num-1)*hist_binsize) && (Age_Dist.t[i]<=hist_bin_num*hist_binsize))
-			Age_Dist.C[i] = (1-CVector(pdfparams).sum())/hist_binsize;
-	}
-	return Age_Dist;
+    double dt0 = (multiplier != 0) ?
+                     max_age / (1 + std::pow(1 + multiplier, num_intervals)) * multiplier :
+                     max_age / num_intervals;
 
+    age_dist.setTime(0, 0.0);
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        age_dist.setTime(i, age_dist.getTime(i - 1) + dt0 * std::pow(1 + multiplier, i));
+    }
+
+    for (int i = 0; i < num_intervals + 1; ++i) {
+        age_dist.setValue(i, (1.0 / params[0]) * std::exp(-age_dist.getTime(i) / params[0]));
+    }
+
+    return age_dist;
 }
 
-CBTC CWell::creat_age_dist_Gamma(vector<double> params, double tlast, int numinc, double mult)
+TimeSeries<double> CWell::createLogNormalDistribution(
+    const std::vector<double>& params,
+    double max_age,
+    int num_intervals,
+    double multiplier)
 {
-	double k_gamma = params[0];
-	double theta_gamma = params[1];
-	
-	CBTC Age_Dist(numinc+1); 
-	double dt0;
-	if (mult!=1)
-		dt0 = tlast/(1+pow(1+mult,numinc))*mult;
-	else
-		dt0 = tlast/numinc;
+    TimeSeries<double> age_dist(num_intervals + 1);
 
-	Age_Dist.t[0] = 0;
-	for (int i=1; i<numinc+1; i++)
-		Age_Dist.t[i] = Age_Dist.t[i-1]+dt0*pow(1+mult,i-1);
-	
-	Age_Dist.C[0]=0;
-	for (int i=1; i<numinc+1; i++)
-		Age_Dist.C[i] = Gammapdf(Age_Dist.t[i],k_gamma,theta_gamma);
+    double dt0 = (multiplier != 1) ?
+                     max_age / (1 + std::pow(1 + multiplier, num_intervals)) * multiplier :
+                     max_age / num_intervals;
 
-	return Age_Dist;
+    age_dist.setTime(0, 0.0);
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        age_dist.setTime(i, age_dist.getTime(i - 1) + dt0 * std::pow(1 + multiplier, i - 1));
+    }
+
+    age_dist.setValue(0, 0.0);
+    double pi = 4.0 * std::atan(1.0);
+
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        double t = age_dist.getTime(i);
+        double value = 1.0 / (t * std::log(params[1]) * std::sqrt(2.0 * pi)) *
+                       std::exp(-std::pow(std::log(t) - std::log(params[0]), 2) /
+                                (2.0 * std::pow(params[1], 2)));
+        age_dist.setValue(i, value);
+    }
+
+    return age_dist;
 }
 
-void CWell::set_val(string S, double val)
+TimeSeries<double> CWell::createInverseGaussianDistribution(
+    const std::vector<double>& params,
+    double max_age,
+    int num_intervals,
+    double multiplier)
 {
-	vector<char> del;
-	del.push_back('[');
-	del.push_back(']');
-	del.push_back(':');
-	vector<string> s = split(S,del);
-	if (s.size()==1)
-	{
-		if (tolower(trim(s[0]))=="f") fraction_old = val;  
-		if (tolower(trim(s[0]))=="fm") fm = val;  
-		if (tolower(trim(s[0]))=="vz_delay") vz_delay = val;
-		if (tolower(trim(s[0]))=="age_old") age_old = val;
-	}
-	if (s.size()==2)
-		if (tolower(trim(s[0])=="param")) params[atoi(s[1].c_str())]=val;
+    double pi = 4.0 * std::atan(1.0);
+    TimeSeries<double> age_dist(num_intervals + 1);
 
+    double lambda = std::pow(params[0], 3) / std::pow(params[1], 2);
+    double dt0 = (multiplier != 1) ?
+                     max_age / (1 + std::pow(1 + multiplier, num_intervals)) * multiplier :
+                     max_age / num_intervals;
+
+    age_dist.setTime(0, 1e-12);
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        age_dist.setTime(i, age_dist.getTime(i - 1) + dt0 * std::pow(1 + multiplier, i));
+    }
+
+    for (int i = 0; i < num_intervals + 1; ++i) {
+        double t = age_dist.getTime(i);
+        double value = std::sqrt(lambda / (2.0 * pi * std::pow(t, 3))) *
+                       std::exp(-lambda * std::pow(t - params[0], 2) /
+                                (2.0 * std::pow(params[0], 2) * t));
+        age_dist.setValue(i, value);
+    }
+
+    return age_dist;
 }
 
-int CWell::get_numparams(string S, int nbins)
+TimeSeries<double> CWell::createInverseGaussianDistribution_MuLambda(
+    const std::vector<double>& params,
+    double max_age,
+    int num_intervals,
+    double multiplier)
 {
-	if ((distribution=="dirac") || (distribution=="piston"))
-		return 1;
-	if ((distribution=="gamma"))
-		return 2;
-	if ((distribution=="igaussian"))
-		return 2;
-	if ((distribution == "igaussianm"))
-		return 4;
-	if ((distribution == "lognormal"))
-		return 2;
-	if ((distribution=="hist"))
-		return nbins;
-	if ((distribution=="dispersion"))
-		return 2;
-	if ((distribution=="exp") || (distribution=="exponential"))
-		return 1;
-	if (distribution=="shifted_exp") 
-		return 2;
-	if (distribution=="levy") 
-		return 1;
-	if (distribution=="shifted_levy") 
-		return 2;
-	if (distribution=="generalized_igaussian") 
-		return 3;
+    double pi = 4.0 * std::atan(1.0);
+    TimeSeries<double> age_dist(num_intervals + 1);
+
+    double lambda = params[1];
+    double dt0 = (multiplier != 1) ?
+                     max_age / (1 + std::pow(1 + multiplier, num_intervals)) * multiplier :
+                     max_age / num_intervals;
+
+    age_dist.setTime(0, 1e-12);
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        age_dist.setTime(i, age_dist.getTime(i - 1) + dt0 * std::pow(1 + multiplier, i));
+    }
+
+    for (int i = 0; i < num_intervals + 1; ++i) {
+        double t = age_dist.getTime(i);
+        double value = std::sqrt(lambda / (2.0 * pi * std::pow(t, 3))) *
+                       std::exp(-lambda * std::pow(t - params[0], 2) /
+                                (2.0 * std::pow(params[0], 2) * t));
+        age_dist.setValue(i, value);
+    }
+
+    return age_dist;
+}
+
+TimeSeries<double> CWell::createLevyDistribution(
+    const std::vector<double>& params,
+    double max_age,
+    int num_intervals,
+    double multiplier)
+{
+    double pi = 4.0 * std::atan(1.0);
+    TimeSeries<double> age_dist(num_intervals + 1);
+
+    double c_levy = params[0];
+    double dt0 = (multiplier != 1) ?
+                     max_age / (1 + std::pow(1 + multiplier, num_intervals)) * multiplier :
+                     max_age / num_intervals;
+
+    age_dist.setTime(0, 1e-12);
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        age_dist.setTime(i, age_dist.getTime(i - 1) + dt0 * std::pow(1 + multiplier, i));
+    }
+
+    for (int i = 0; i < num_intervals + 1; ++i) {
+        double t = age_dist.getTime(i);
+        double value = std::sqrt(c_levy / (2.0 * pi)) *
+                       std::exp(-c_levy / (2.0 * t)) / std::pow(t, 1.5);
+        age_dist.setValue(i, value);
+    }
+
+    return age_dist;
+}
+
+TimeSeries<double> CWell::createShiftedLevyDistribution(
+    const std::vector<double>& params,
+    double max_age,
+    int num_intervals,
+    double multiplier)
+{
+    double pi = 4.0 * std::atan(1.0);
+    TimeSeries<double> age_dist(num_intervals + 1);
+
+    double c_levy = params[0];
+    double t_shift = params[1];
+    double dt0 = (multiplier != 1) ?
+                     max_age / (1 + std::pow(1 + multiplier, num_intervals)) * multiplier :
+                     max_age / num_intervals;
+
+    age_dist.setTime(0, 1e-12);
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        age_dist.setTime(i, age_dist.getTime(i - 1) + dt0 * std::pow(1 + multiplier, i));
+    }
+
+    for (int i = 0; i < num_intervals + 1; ++i) {
+        double t = age_dist.getTime(i);
+        if (t > t_shift) {
+            double value = std::sqrt(c_levy / (2.0 * pi)) *
+                           std::exp(-c_levy / (2.0 * (t - t_shift))) /
+                           std::pow(t - t_shift, 1.5);
+            age_dist.setValue(i, value);
+        } else {
+            age_dist.setValue(i, 0.0);
+        }
+    }
+
+    return age_dist;
+}
+
+TimeSeries<double> CWell::createShiftedExponentialDistribution(
+    const std::vector<double>& params,
+    double max_age,
+    int num_intervals,
+    double multiplier)
+{
+    TimeSeries<double> age_dist(num_intervals + 1);
+
+    double lambda = params[0];
+    double t_shift = params[1];
+    double dt0 = (multiplier != 1) ?
+                     max_age / (1 + std::pow(1 + multiplier, num_intervals)) * multiplier :
+                     max_age / num_intervals;
+
+    age_dist.setTime(0, 1e-12);
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        age_dist.setTime(i, age_dist.getTime(i - 1) + dt0 * std::pow(1 + multiplier, i));
+    }
+
+    for (int i = 0; i < num_intervals + 1; ++i) {
+        double t = age_dist.getTime(i);
+        if (t > t_shift) {
+            age_dist.setValue(i, (1.0 / lambda) * std::exp(-(t - t_shift) / lambda));
+        } else {
+            age_dist.setValue(i, 0.0);
+        }
+    }
+
+    return age_dist;
+}
+
+TimeSeries<double> CWell::createGeneralizedInverseGaussianDistribution(
+    const std::vector<double>& params,
+    double max_age,
+    int num_intervals,
+    double multiplier)
+{
+    TimeSeries<double> age_dist(num_intervals + 1);
+
+    double p = params[0];
+    double a = params[1];
+    double b = params[2];
+
+    double dt0 = (multiplier != 1) ?
+                     max_age / (1 + std::pow(1 + multiplier, num_intervals)) * multiplier :
+                     max_age / num_intervals;
+
+    age_dist.setTime(0, 1e-12);
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        age_dist.setTime(i, age_dist.getTime(i - 1) + dt0 * std::pow(1 + multiplier, i));
+    }
+
+    for (int i = 0; i < num_intervals + 1; ++i) {
+        double t = age_dist.getTime(i);
+        double value = std::pow(t, p - 1) * std::exp(-(a * t + b / t) / 2.0);
+        age_dist.setValue(i, value);
+    }
+
+    double area = age_dist.integrate();
+    return (1.0 / area) * age_dist;
+}
+
+TimeSeries<double> CWell::createDispersionDistribution(
+    const std::vector<double>& params,
+    double max_age,
+    int num_intervals,
+    double multiplier)
+{
+    double pi = 4.0 * std::atan(1.0);
+    TimeSeries<double> age_dist(num_intervals + 1);
+
+    double dt0 = (multiplier != 1) ?
+                     max_age / (1 + std::pow(1 + multiplier, num_intervals)) * multiplier :
+                     max_age / num_intervals;
+
+    age_dist.setTime(0, 1e-12);
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        age_dist.setTime(i, age_dist.getTime(i - 1) + dt0 * std::pow(1 + multiplier, i));
+    }
+
+    for (int i = 0; i < num_intervals + 1; ++i) {
+        double t = age_dist.getTime(i);
+        double value = 1.0 / std::sqrt(2.0 * pi * params[1] * t) *
+                       std::exp(-std::pow(t - params[0], 2) / (4.0 * params[1] * t));
+        age_dist.setValue(i, value);
+    }
+
+    return age_dist;
+}
+
+TimeSeries<double> CWell::createHistogramDistribution(
+    const std::vector<double>& params,
+    int num_bins,
+    double bin_size,
+    double max_age,
+    int num_intervals,
+    double multiplier)
+{
+    TimeSeries<double> age_dist(num_intervals + 1);
+
+    double dt0 = (multiplier != 0) ?
+                     max_age / (1 + std::pow(1 + multiplier, num_intervals)) * multiplier :
+                     max_age / num_intervals;
+
+    age_dist.setTime(0, 0.0);
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        age_dist.setTime(i, age_dist.getTime(i - 1) + dt0 * std::pow(1 + multiplier, i - 1));
+    }
+
+    age_dist.setValue(0, 0.0);
+
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        double t = age_dist.getTime(i);
+        age_dist.setValue(i, 0.0);
+
+        for (int j = 0; j < num_bins - 1; ++j) {
+            if (t > j * bin_size && t <= (j + 1) * bin_size) {
+                age_dist.setValue(i, params[j] / bin_size);
+            }
+        }
+
+        if (t > (num_bins - 1) * bin_size && t <= num_bins * bin_size) {
+            CVector param_vec(params);
+            age_dist.setValue(i, (1.0 - param_vec.sum()) / bin_size);
+        }
+    }
+
+    return age_dist;
+}
+
+TimeSeries<double> CWell::createGammaDistribution(
+    const std::vector<double>& params,
+    double max_age,
+    int num_intervals,
+    double multiplier)
+{
+    double k_gamma = params[0];
+    double theta_gamma = params[1];
+
+    TimeSeries<double> age_dist(num_intervals + 1);
+
+    double dt0 = (multiplier != 1) ?
+                     max_age / (1 + std::pow(1 + multiplier, num_intervals)) * multiplier :
+                     max_age / num_intervals;
+
+    age_dist.setTime(0, 0.0);
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        age_dist.setTime(i, age_dist.getTime(i - 1) + dt0 * std::pow(1 + multiplier, i - 1));
+    }
+
+    age_dist.setValue(0, 0.0);
+    for (int i = 1; i < num_intervals + 1; ++i) {
+        double t = age_dist.getTime(i);
+        age_dist.setValue(i, Gammapdf(t, k_gamma, theta_gamma));
+    }
+
+    return age_dist;
 }

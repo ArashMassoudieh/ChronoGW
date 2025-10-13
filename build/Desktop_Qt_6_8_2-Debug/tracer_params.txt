@@ -1,0 +1,10 @@
+Tracer: 3H
+  Decay rate: 0.056262
+  Retardation: 1.000000
+  Input multiplier: 1.000000
+  Old water concentration: 5.000000
+  Modern water concentration: 0.000000
+  Max fraction modern: 0.000000
+  VZ delay enabled: No
+  Linear production: No
+  Constant input: 10.000000

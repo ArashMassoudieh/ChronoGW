@@ -1,333 +1,315 @@
 #include "Tracer.h"
-#include "StringOP.h"
-#include "Well.h"
+#include "Utilities.h"
+#include <cmath>
+#include <sstream>
+#include <iomanip>
 
-CTracer::CTracer(void)
+// ============================================================================
+// Constructors
+// ============================================================================
+
+CTracer::CTracer()
+    : name_("")
+    , input_multiplier_(1.0)
+    , decay_rate_(0.0)
+    , retardation_(1.0)
+    , c_old_(0.0)
+    , c_modern_(0.0)
+    , fm_max_(0.0)
+    , vz_delay_(false)
+    , linear_production_(false)
+    , constant_input_(false)
+    , constant_input_value_(0.0)
+    , source_tracer_name_("")
+    , source_tracer_(nullptr)
 {
-
 }
 
+CTracer::CTracer(const std::string& name)
+    : CTracer()
+{
+    name_ = name;
+}
 
-CTracer::~CTracer(void)
+CTracer::CTracer(const CTracer& other)
+    : name_(other.name_)
+    , input_(other.input_)
+    , input_multiplier_(other.input_multiplier_)
+    , decay_rate_(other.decay_rate_)
+    , retardation_(other.retardation_)
+    , c_old_(other.c_old_)
+    , c_modern_(other.c_modern_)
+    , fm_max_(other.fm_max_)
+    , vz_delay_(other.vz_delay_)
+    , linear_production_(other.linear_production_)
+    , constant_input_(other.constant_input_)
+    , constant_input_value_(other.constant_input_value_)
+    , source_tracer_name_(other.source_tracer_name_)
+    , source_tracer_(other.source_tracer_)
 {
 }
 
-CTracer::CTracer(const CTracer &m)
+CTracer& CTracer::operator=(const CTracer& other)
 {
-	input = m.input;
-	source = m.source;
-	input_multiplier=m.input_multiplier;
-	co = m.co;
-	decay_rate=m.decay_rate;
-	retard=m.retard;
-	fm_max=m.fm_max;
-	SourceTr = m.SourceTr;
-	obs_std=m.obs_std;
-	name = m.name;
-	cm = m.cm;
-	linear_prod=m.linear_prod;
-	vz_delay = m.vz_delay;
-	constant_input = m.constant_input;
-	constant_input_val = m.constant_input_val;	
-	conc = m.conc;
+    if (this != &other) {
+        name_ = other.name_;
+        input_ = other.input_;
+        input_multiplier_ = other.input_multiplier_;
+        decay_rate_ = other.decay_rate_;
+        retardation_ = other.retardation_;
+        c_old_ = other.c_old_;
+        c_modern_ = other.c_modern_;
+        fm_max_ = other.fm_max_;
+        vz_delay_ = other.vz_delay_;
+        linear_production_ = other.linear_production_;
+        constant_input_ = other.constant_input_;
+        constant_input_value_ = other.constant_input_value_;
+        source_tracer_name_ = other.source_tracer_name_;
+        source_tracer_ = other.source_tracer_;
+    }
+    return *this;
 }
 
-CTracer& CTracer::operator=(const CTracer &m)
+// ============================================================================
+// Parameter Setting (backward compatibility)
+// ============================================================================
+
+bool CTracer::setParameter(const std::string& param_name, double value)
 {
-	input = m.input;
-	source = m.source;
-	input_multiplier=m.input_multiplier;
-	co = m.co;
-	decay_rate=m.decay_rate;
-	retard=m.retard;
-	fm_max=m.fm_max;
-	SourceTr = m.SourceTr;
-	obs_std=m.obs_std;
-	name = m.name;
-	cm = m.cm;
-	linear_prod=m.linear_prod;
-	vz_delay = m.vz_delay;
-	constant_input = m.constant_input;
-	constant_input_val = m.constant_input_val;	
-	conc = m.conc;
-	return *this;
+    std::string lower_name = aquiutils::tolower(param_name);
+
+    if (lower_name == "co") {
+        c_old_ = value;
+    }
+    else if (lower_name == "cm") {
+        c_modern_ = value;
+    }
+    else if (lower_name == "decay") {
+        decay_rate_ = value;
+    }
+    else if (lower_name == "fm") {
+        fm_max_ = value;
+    }
+    else if (lower_name == "retard") {
+        retardation_ = value;
+    }
+    else if (lower_name == "input_multiplier") {
+        input_multiplier_ = value;
+    }
+    else if (lower_name == "vz_delay") {
+        vz_delay_ = (value != 0.0);
+    }
+    else if (lower_name == "constant_input") {
+        setConstantInput(value);
+    }
+    else {
+        return false; // Unknown parameter
+    }
+
+    return true;
 }
 
-double CTracer::calc_conc(double t, CBTC &young_dist, double f, double _vz_delay, bool fixed_old_conc, double age_old, double fm)
+// ============================================================================
+// Concentration Calculation - Main Method
+// ============================================================================
+
+double CTracer::calculateConcentration(
+    double time,
+    const TimeSeries<double>& age_distribution,
+    double fraction_old,
+    double vz_delay,
+    bool fixed_old_conc,
+    double age_old,
+    double fraction_modern) const
 {
-	double sum=0;
-	double vz1=0;
-	double vz2=0; 
-	if (vz_delay==true) vz1=_vz_delay;
-	if (source!="") if (SourceTr->vz_delay==true) vz2=_vz_delay;
-	if (source=="")
-	{	if (linear_prod==false)
-		{
-			for (int i=1; i<young_dist.n; i++)
-			{
-				double a1,a2;
-				a1=input_multiplier*young_dist.C[i-1]*input.interpol(t-retard*(young_dist.t[i-1]+vz1))*exp(-decay_rate*retard*(young_dist.t[i-1]+vz1));
-				a2=input_multiplier*young_dist.C[i]*input.interpol(t-retard*(young_dist.t[i]+vz1))*exp(-decay_rate*retard*(young_dist.t[i]+vz1));
-				sum += (1-fm*fm_max)*0.5*(a1+a2)*(young_dist.t[i]-young_dist.t[i-1]);
-			}
-		}
-		else
-		{
-			for (int i=1; i<young_dist.n; i++)
-			{
-				double a1=input_multiplier*young_dist.C[i-1]*(input.interpol(t-retard*(young_dist.t[i-1]+vz1))+decay_rate*retard*(young_dist.t[i-1]+vz1));
-				double a2=input_multiplier*young_dist.C[i]*(input.interpol(t-retard*(young_dist.t[i]+vz1))+decay_rate*retard*(young_dist.t[i]+vz1));
-				sum += (1-fm*fm_max)*0.5*(a1+a2)*(young_dist.t[i]-young_dist.t[i-1]);
-			}
-		}
-	}
-	else
-	{
-		for (int i=1; i<young_dist.n; i++)
-			{
-				double a1,a2;
-				a1=SourceTr->input_multiplier*young_dist.C[i-1]*SourceTr->input.interpol(t-SourceTr->retard*(young_dist.t[i-1]+vz2))*(1-exp(-SourceTr->decay_rate*SourceTr->retard*young_dist.t[i-1]))*exp(-SourceTr->decay_rate*SourceTr->retard*vz2);
-				a2=SourceTr->input_multiplier*young_dist.C[i]*SourceTr->input.interpol(t-SourceTr->retard*(young_dist.t[i]+vz2))*(1-exp(-SourceTr->decay_rate*SourceTr->retard*young_dist.t[i]))*exp(-SourceTr->decay_rate*SourceTr->retard*vz2);
-				sum += (1-fm*fm_max)*0.5*(a1+a2)*(young_dist.t[i]-young_dist.t[i-1]);
-			}
-	}
-	if (fixed_old_conc==true)
-		sum = sum*(1-f) + (1-fm*fm_max)*f*co + fm*fm_max*cm;
-	else
-		if (linear_prod==false)
-			sum = sum*(1-f) + input_multiplier*(1-fm*fm_max)*f*input.interpol(t-retard*(age_old+vz1))*exp(-decay_rate*retard*(age_old+vz1))+ fm*fm_max*cm;
-		else
-			sum = sum*(1-f) + input_multiplier*(1-fm*fm_max)*f*(input.interpol(t-retard*(age_old+vz1))+decay_rate*retard*(age_old+vz1))+ fm*fm_max*cm;
-	
-	return sum;
+    // Calculate young water component
+    double young_component = 0.0;
+
+    if (!hasSourceTracer()) {
+        // Direct input from atmosphere/surface
+        young_component = calculateYoungWaterComponent(
+            time, age_distribution, vz_delay, fraction_modern);
+    }
+    else {
+        // Production from parent tracer decay
+        young_component = calculateFromParentDecay(
+            time, age_distribution, vz_delay, fraction_modern);
+    }
+
+    // Calculate old water component
+    double old_component = calculateOldWaterComponent(
+        time, fraction_old, vz_delay, age_old, fraction_modern, fixed_old_conc);
+
+    // Mix young and old water
+    return young_component * (1.0 - fraction_old) + old_component * fraction_old;
 }
 
-double CTracer::calc_concFromMatrix(double t, vector<double> params, double f, double _vz_delay, bool fixed_old_conc, double age_old, double fm)
+// ============================================================================
+// Concentration Calculation - Helper Methods
+// ============================================================================
+
+double CTracer::calculateYoungWaterComponent(
+    double time,
+    const TimeSeries<double>& age_distribution,
+    double vz_delay,
+    double fraction_modern) const
 {
-	
-	// 0: Dispersion coefficient 
-	// 1: x_gw
-	// 2: x_vz
-	// 3: v
+    double sum = 0.0;
+    double vz = vz_delay_ ? vz_delay : 0.0;
 
-		
-	double sum = 0;
-	double vz1 = 0;
-	double vz2 = 0;
-	vector<double> mu_lambda(2);
-	double x;
-	if (vz_delay)
-	{
-		x = params[1] + params[2];
-	}
-	else
-	{
-		x = params[1];
-	}
-	double D = params[0];
-	double v = params[3];
-	mu_lambda[0] = x / v;
-	mu_lambda[1] = x*x / 2 / D;
+    // Integrate over age distribution
+    for (size_t i = 1; i < age_distribution.size(); ++i) {
+        double age1 = age_distribution.getTime(i - 1);
+        double age2 = age_distribution.getTime(i);
+        double pdf1 = age_distribution.getValue(i - 1);
+        double pdf2 = age_distribution.getValue(i);
 
-	if (linear_prod)
-	{
-		return constant_input_val + decay_rate*mu_lambda[0];
-	}
+        double value1, value2;
 
-	//if (vz_delay == true) vz1 = _vz_delay;
-	if (source != "") if (SourceTr->vz_delay == true) vz2 = _vz_delay;
-	sum += (1 - fm*fm_max)*interpolationMatrix(t, mu_lambda);
+        if (!linear_production_) {
+            // Standard decay model
+            double t1 = time - retardation_ * (age1 + vz);
+            double t2 = time - retardation_ * (age2 + vz);
 
+            value1 = input_multiplier_ * pdf1 * input_.interpol(t1) *
+                     std::exp(-decay_rate_ * retardation_ * (age1 + vz));
+            value2 = input_multiplier_ * pdf2 * input_.interpol(t2) *
+                     std::exp(-decay_rate_ * retardation_ * (age2 + vz));
+        }
+        else {
+            // Linear production model
+            double t1 = time - retardation_ * (age1 + vz);
+            double t2 = time - retardation_ * (age2 + vz);
 
-	
-	if (fixed_old_conc == true)
-		sum = sum*(1 - f) + (1 - fm*fm_max)*f*co + fm*fm_max*cm;
-	else
-		if (linear_prod == false)
-			sum = sum*(1 - f) + input_multiplier*(1 - fm*fm_max)*f*input.interpol(t - retard*(age_old + vz1))*exp(-decay_rate*retard*(age_old + vz1)) + fm*fm_max*cm;
-		else
-			sum = sum*(1 - f) + input_multiplier*(1 - fm*fm_max)*f*(input.interpol(t - retard*(age_old + vz1)) + decay_rate*retard*(age_old + vz1)) + fm*fm_max*cm;
+            value1 = input_multiplier_ * pdf1 *
+                     (input_.interpol(t1) + decay_rate_ * retardation_ * (age1 + vz));
+            value2 = input_multiplier_ * pdf2 *
+                     (input_.interpol(t2) + decay_rate_ * retardation_ * (age2 + vz));
+        }
 
-	return sum;
-}
-/*double CTracer::calc_conc(double t, CBTC &young_dist, double f, double _vz_delay, bool fixed_old_conc, double age_old, double fm)
-{
-	//ts = QSort(
-	double sum=0;
-	double vz1=0;
-	double vz2=0; 
-	if (vz_delay==true) vz1=_vz_delay;
-	if (source!=-1) if (SourceTr->vz_delay==true) vz2=_vz_delay;
-	if (source==-1)
-	{	if (linear_prod==false)
-		{
-			for (int i=1; i<young_dist.n; i++)
-			{
-				double a1,a2;
-				a1=input_multiplier*young_dist.C[i-1]*input.interpol(t-retard*(young_dist.t[i-1]+vz1))*exp(-decay_rate*retard*(young_dist.t[i-1]+vz1));
-				a2=input_multiplier*young_dist.C[i]*input.interpol(t-retard*(young_dist.t[i]+vz1))*exp(-decay_rate*retard*(young_dist.t[i]+vz1));
-				sum += (1-fm*fm_max)*0.5*(a1+a2)*(young_dist.t[i]-young_dist.t[i-1]);
-			}
-		}
-		else
-		{
-			for (int i=1; i<young_dist.n; i++)
-			{
-				double a1=input_multiplier*young_dist.C[i-1]*(input.interpol(t-retard*(young_dist.t[i-1]+vz1))+decay_rate*retard*(young_dist.t[i-1]+vz1));
-				double a2=input_multiplier*young_dist.C[i]*(input.interpol(t-retard*(young_dist.t[i]+vz1))+decay_rate*retard*(young_dist.t[i]+vz1));
-				sum += (1-fm*fm_max)*0.5*(a1+a2)*(young_dist.t[i]-young_dist.t[i-1]);
-			}
-		}
-	}
-	else
-	{
-		for (int i=1; i<young_dist.n; i++)
-			{
-				double a1,a2;
-				a1=SourceTr->input_multiplier*young_dist.C[i-1]*SourceTr->input.interpol(t-SourceTr->retard*(young_dist.t[i-1]+vz2))*(1-exp(-SourceTr->decay_rate*SourceTr->retard*young_dist.t[i-1]))*exp(-SourceTr->decay_rate*SourceTr->retard*vz2);
-				a2=SourceTr->input_multiplier*young_dist.C[i]*SourceTr->input.interpol(t-SourceTr->retard*(young_dist.t[i]+vz2))*(1-exp(-SourceTr->decay_rate*SourceTr->retard*young_dist.t[i]))*exp(-SourceTr->decay_rate*SourceTr->retard*vz2);
-				sum += (1-fm*fm_max)*0.5*(a1+a2)*(young_dist.t[i]-young_dist.t[i-1]);
-			}
-	}
-	if (fixed_old_conc==true)
-		sum = sum*(1-f) + (1-fm*fm_max)*f*co + fm*fm_max*cm;
-	else
-		if (linear_prod==false)
-			sum = sum*(1-f) + input_multiplier*(1-fm*fm_max)*f*input.interpol(t-retard*(age_old+vz1))*exp(-decay_rate*retard*(age_old+vz1))+ fm*fm_max*cm;
-		else
-			sum = sum*(1-f) + input_multiplier*(1-fm*fm_max)*f*(input.interpol(t-retard*(age_old+vz1))+decay_rate*retard*(age_old+vz1))+ fm*fm_max*cm;
-	
-	return sum;
-}*/
+        // Trapezoidal integration
+        sum += (1.0 - fraction_modern * fm_max_) * 0.5 * (value1 + value2) * (age2 - age1);
+    }
 
-
-void CTracer::set_val(string S, double val)
-{
-	if (tolower(S)=="co") co = val;
-	if (tolower(S)=="cm") cm = val;
-	if (tolower(S)=="decay") decay_rate = val;  
-	if (tolower(S)=="fm") fm_max = val;  
-	if (tolower(S)=="retard") retard = val;  
-	if (tolower(S)=="input_multiplier") input_multiplier = val; 
-	if (tolower(S)=="vz_delay") vz_delay = val;
-	if (tolower(S)=="constant_input") 
-		{
-			constant_input_val = val;
-			constant_input = true;
-		}				
-}		
-double CTracer::interpolationMatrix(double t, vector<double> params)
-{
-	/*	0: mu
-		1: lambda
-		2: year 
-		3: decay rate
-		*/
-	int k = 0;
-	if (ndecay_rate != 1)
-		k = decayrateInv(decay_rate);
-	///////////
-	float y = yearInv(t);
-	float m = muInv(params[0]);
-	float l = lambdaInv(params[1]);
-
-
-	int y0 = floor(y);
-	int m0 = floor(m);
-	int l0 = floor(l);
-
-	CMatrix conc2(2, 2);
-
-	for (int i = 0; i < 2; i++)
-		for (int j = 0; j < 2; j++)
-			conc2[i][j] = conc[k][y0][m0+i][l0+j] + (conc[k][y0 + 1][m0+i][l0+j] - conc[k][y0][m0+i][l0+j]) / (year(y0 + 1) - year(y0))*(t - year(y0));
-	vector<double> conc3;
-	conc3.resize(2);
-	for (int j = 0; j < 2; j++)
-		conc3[j] = conc2[0][0] + (conc2[0][j] - conc2[0][0]) / (lambda(l0 + 1) - lambda(l0))*(params[1] - lambda(l0));
-	
-	return conc3[0] + (conc3[1] - conc3[0]) / (mu(m0 + 1) - mu(m0))*(params[0] - mu(m0));
-
+    return sum;
 }
 
-void CTracer::calcMatrix()
+double CTracer::calculateFromParentDecay(
+    double time,
+    const TimeSeries<double>& age_distribution,
+    double vz_delay,
+    double fraction_modern) const
 {
-	if (linear_prod)
-	{
-		return;
-	}
-	conc.reserve(ndecay_rate);
-	cout << "\n" + name;
+    if (!source_tracer_) {
+        return 0.0; // No parent tracer
+    }
 
-	for (int k = 0; k < ndecay_rate; k++)
-	{
-		decay_rate = decayrate(k);
-		conc[k].resize(numberofSteps); //Number of years ,
+    double sum = 0.0;
+    double vz = source_tracer_->vz_delay_ ? vz_delay : 0.0;
 
-		cout << "\n" + name;
-		for (int y = 0; y < numberofSteps; y++)
-		{
-			int _year = year(y);
-			cout << "\n" + std::to_string(_year) + "\n";
-			conc[k][y] = CMatrix(nmu, nlambda);
-			for (int i = 0; i < nmu; i++)
-			{
-				cout << std::to_string((100 * i) / nmu) + "% ";
-				float _mu = mu(i);
-				for (int j = 0; j < nlambda; j++)
-				{
-					float _lambda = lambda(j);
-					vector<double> params;
-					params.push_back(_mu);
-					params.push_back(_lambda);
-					CBTC dist = CWell::creat_age_dist_InvG_mu_lambda(params, 500, 500, 0.05);
-					//			dist.writefile("out/distributions/age_dist mu(" + std::to_string(mu) + ") lambda(" + std::to_string(lambda) + ").txt");
-					conc[k][y][i][j] = calc_conc(_year, dist, 0);
-				}
-			}
-		}
-	}
-	//		conc[y].writetofile("out/tracers/" + name + "-" + std::to_string(year) + ".txt");
+    // Integrate production from parent decay
+    for (size_t i = 1; i < age_distribution.size(); ++i) {
+        double age1 = age_distribution.getTime(i - 1);
+        double age2 = age_distribution.getTime(i);
+        double pdf1 = age_distribution.getValue(i - 1);
+        double pdf2 = age_distribution.getValue(i);
+
+        double t1 = time - source_tracer_->retardation_ * (age1 + vz);
+        double t2 = time - source_tracer_->retardation_ * (age2 + vz);
+
+        // Parent concentration times (1 - exp(-decay*age)) gives daughter production
+        double value1 = source_tracer_->input_multiplier_ * pdf1 *
+                        source_tracer_->input_.interpol(t1) *
+                        (1.0 - std::exp(-source_tracer_->decay_rate_ *
+                                        source_tracer_->retardation_ * age1)) *
+                        std::exp(-source_tracer_->decay_rate_ *
+                                 source_tracer_->retardation_ * vz);
+
+        double value2 = source_tracer_->input_multiplier_ * pdf2 *
+                        source_tracer_->input_.interpol(t2) *
+                        (1.0 - std::exp(-source_tracer_->decay_rate_ *
+                                        source_tracer_->retardation_ * age2)) *
+                        std::exp(-source_tracer_->decay_rate_ *
+                                 source_tracer_->retardation_ * vz);
+
+        sum += (1.0 - fraction_modern * fm_max_) * 0.5 * (value1 + value2) * (age2 - age1);
+    }
+
+    return sum;
 }
 
-int CTracer::decayrate(int index)
+double CTracer::calculateOldWaterComponent(
+    double time,
+    double fraction_old,
+    double vz_delay,
+    double age_old,
+    double fraction_modern,
+    bool fixed_old_conc) const
 {
-	if (ndecay_rate == 1) return decay_rate;
-	return exp(log(min_decayrate) + log(max_decayrate / min_decayrate) / ndecay_rate*(index + 1));
-}
-float CTracer::decayrateInv(int decayrate)
-{
-	if (ndecay_rate == 1) return 0;
-	return ndecay_rate*(log(decayrate) - log(min_decayrate)) / (log(max_decayrate / min_decayrate)) - 1;
+    if (fraction_old == 0.0) {
+        return 0.0; // No old water
+    }
+
+    double vz = vz_delay_ ? vz_delay : 0.0;
+
+    if (fixed_old_conc) {
+        // Use fixed concentration for old water
+        return (1.0 - fraction_modern * fm_max_) * c_old_ +
+               fraction_modern * fm_max_ * c_modern_;
+    }
+    else {
+        // Calculate old water concentration from input
+        double old_conc;
+
+        if (!linear_production_) {
+            old_conc = input_multiplier_ *
+                       input_.interpol(time - retardation_ * (age_old + vz)) *
+                       std::exp(-decay_rate_ * retardation_ * (age_old + vz));
+        }
+        else {
+            old_conc = input_multiplier_ *
+                       (input_.interpol(time - retardation_ * (age_old + vz)) +
+                        decay_rate_ * retardation_ * (age_old + vz));
+        }
+
+        return (1.0 - fraction_modern * fm_max_) * old_conc +
+               fraction_modern * fm_max_ * c_modern_;
+    }
 }
 
+// ============================================================================
+// Serialization / Output
+// ============================================================================
 
-float CTracer::year(int index)
+std::string CTracer::parametersToString() const
 {
-	return startYear + index / numberofSteps * (endYear - startYear);
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(6);
+
+    oss << "Tracer: " << name_ << "\n";
+    oss << "  Decay rate: " << decay_rate_ << "\n";
+    oss << "  Retardation: " << retardation_ << "\n";
+    oss << "  Input multiplier: " << input_multiplier_ << "\n";
+    oss << "  Old water concentration: " << c_old_ << "\n";
+    oss << "  Modern water concentration: " << c_modern_ << "\n";
+    oss << "  Max fraction modern: " << fm_max_ << "\n";
+    oss << "  VZ delay enabled: " << (vz_delay_ ? "Yes" : "No") << "\n";
+    oss << "  Linear production: " << (linear_production_ ? "Yes" : "No") << "\n";
+
+    if (constant_input_) {
+        oss << "  Constant input: " << constant_input_value_ << "\n";
+    } else {
+        oss << "  Input time series: " << input_.size() << " points\n";
+    }
+
+    if (!source_tracer_name_.empty()) {
+        oss << "  Source tracer: " << source_tracer_name_ << "\n";
+    }
+
+    return oss.str();
 }
 
-float CTracer::yearInv(float year)
+void CTracer::writeInfo(std::ostream& out) const
 {
-	return 1.0 * (year - startYear) * numberofSteps / (endYear - startYear);
-}
-
-double CTracer::mu(int index)
-{
-	return exp(log(min_mu) + log(max_mu / min_mu) / nmu*(index + 1));
-}
-
-int CTracer::muInv(double mu)
-{
-	return nmu*(log(mu) - log(min_mu)) / (log(max_mu / min_mu)) - 1;
-}
-
-double CTracer::lambda(int index)
-{
-	return exp(log(min_lambda) + log(max_lambda / min_lambda) / nlambda*(index + 1));
-}
-
-int CTracer::lambdaInv(double lambda)
-{
-	return nlambda*(log(lambda) - log(min_lambda)) / (log(max_lambda / min_lambda)) - 1;
+    out << parametersToString();
 }
