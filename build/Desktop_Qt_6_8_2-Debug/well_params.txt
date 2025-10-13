@@ -1,8 +1,0 @@
-Well: Well-8
-  Distribution type: exponential
-  Distribution parameters: [30.000000]
-  Fraction old water: 0.300000
-  Age of old water: 5000.000000 years
-  Fraction modern: 0.400000
-  VZ delay: 0.000000 years
-  Age distribution computed: 101 points

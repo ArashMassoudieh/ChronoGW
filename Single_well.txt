@@ -1,0 +1,46 @@
+path=/home/arash/Projects/ChronoGW/Inputs/
+outpath=/home/arash/Projects/ChronoGW/Outputs/
+
+well=8, {f=p[fraction_old_well8];param[0]=p[young_mean_age_well8];param[1]=p[young_p2_well8];distribution=igaussian; age_old=p[age_old_well8];fm=p[fm_well8]}
+
+tracer=3H, {decay=0.056261946; fm=0; input=3H.txt}
+tracer=3He, {source=3H; fm=0}
+tracer=13C, {fm=1;decay=0;co=p[13C_bio];constant_input=p[13C_bio];cm=p[13C_mineral]}
+tracer=14C, {fm=1;decay=0.000120968;input=14C.txt;cm=0}
+tracer=4He, {fm=0;decay=p[He_acc_rate];constant_input=0;linear_prod=1}
+tracer=NO3, {fm=0;decay=p[NO3_decay_rate];input=NO3.txt;ndecayrate=30}
+tracer=85Kr, {fm=0;decay=0.064442839;input=85Kr.txt}
+
+observed=3H_well8, {well=8; tracer=3H; std_param=std_3H; error_structure=normal; observed_data=3H_well8.txt}
+observed=3He_well8, {well=8; tracer=3He; std_param=std_3He; error_structure=normal; observed_data=3He_well8.txt}
+observed=13C_well8, {well=8; tracer=13C; std_param=std_13C; error_structure=normal; observed_data=13C_well8.txt}
+observed=14C_well8, {well=8; tracer=14C; std_param=std_14C; error_structure=normal; observed_data=14C_well8.txt}
+observed=4He_well8, {well=8; tracer=4He; std_param=std_4He; error_structure=normal; observed_data=4He_well8.txt}
+observed=NO3_well8, {well=8; tracer=NO3; std_param=std_NO3; error_structure=normal; observed_data=NO3_well8.txt}
+observed=85Kr_well8, {well=8; tracer=85Kr; std_param=std_85Kr; error_structure=normal; observed_data=85Kr_well8.txt}
+
+project_start=1980
+project_end=2040
+
+pe_info=GAinfo.txt
+detout=modeled.txt
+realizedparam=realized_params.txt 
+
+parameter=young_mean_age_well8, {low=5;high=100; log=1; value=30}
+parameter=young_p2_well8, {low=1;high=100; log=1; value=20}
+parameter=fraction_old_well8, {low=0; high=1; log=2; value=0.2}
+parameter=age_old_well8, {low=500; high=20000; log=1; value=5000}
+parameter=fm_well8, {low=0; high=1; id=500; log=2; value=0.4}
+
+parameter=13C_bio, {low=-27; high=-23; id=272; log=0; value=-25}
+parameter=He_acc_rate, {low=1e-3; high=10; id=214; log=1; value=0.1}
+parameter=13C_mineral, {low=0; high=2; id=252; log=0; value=1.0}
+
+// Standard deviation parameters for each tracer type
+parameter=std_3H, {low=0.01; high=10; log=1; value=1.0}
+parameter=std_3He, {low=0.01; high=5; log=1; value=0.5}
+parameter=std_13C, {low=0.1; high=2; log=1; value=0.5}
+parameter=std_14C, {low=1; high=50; log=1; value=10}
+parameter=std_4He, {low=0.01; high=10; log=1; value=1.0}
+parameter=std_NO3, {low=0.1; high=5; log=1; value=1.0}
+parameter=std_85Kr, {low=0.1; high=20; log=1; value=2.0}

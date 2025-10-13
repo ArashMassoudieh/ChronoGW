@@ -14,6 +14,7 @@ DEFINES += _arma
 
 SOURCES += \
     GWA.cpp \
+    InverseModeling/observation.cpp \
     InverseModeling/parameter.cpp \
     InverseModeling/parameter_set.cpp \
     InverseModeling/src/GA/DistributionNUnif.cpp \
@@ -40,6 +41,7 @@ HEADERS += \
     InverseModeling/include/GA/GA.h \
     InverseModeling/include/GA/GA.hpp \
     InverseModeling/include/GA/Individual.h \
+    InverseModeling/observation.h \
     InverseModeling/parameter.h \
     InverseModeling/parameter_set.h \
     Tracer.h \

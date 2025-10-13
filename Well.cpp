@@ -21,22 +21,14 @@ CWell::CWell()
     , histogram_bin_count_(0)
     , histogram_bin_size_(0.0)
 {
-    // Initialize public members for backward compatibility
-    name = name_;
-    distribution = distribution_type_;
-    fraction_old = fraction_old_;
-    age_old = age_old_;
-    fm = fraction_modern_;
-    vz_delay = vz_delay_;
-    Histogram_bin_num = histogram_bin_count_;
-    Histogram_binsize = histogram_bin_size_;
+
 }
 
 CWell::CWell(const std::string& well_name)
     : CWell()
 {
     name_ = well_name;
-    name = name_;
+
 }
 
 CWell::CWell(const CWell& other)
@@ -51,17 +43,7 @@ CWell::CWell(const CWell& other)
     , histogram_bin_count_(other.histogram_bin_count_)
     , histogram_bin_size_(other.histogram_bin_size_)
 {
-    // Copy to public members
-    name = name_;
-    distribution = distribution_type_;
-    params = parameters_;
-    young_age_distribution = young_age_distribution_;
-    fraction_old = fraction_old_;
-    age_old = age_old_;
-    fm = fraction_modern_;
-    vz_delay = vz_delay_;
-    Histogram_bin_num = histogram_bin_count_;
-    Histogram_binsize = histogram_bin_size_;
+
 }
 
 CWell& CWell::operator=(const CWell& other)
@@ -78,17 +60,6 @@ CWell& CWell::operator=(const CWell& other)
         histogram_bin_count_ = other.histogram_bin_count_;
         histogram_bin_size_ = other.histogram_bin_size_;
 
-        // Sync public members
-        name = name_;
-        distribution = distribution_type_;
-        params = parameters_;
-        young_age_distribution = young_age_distribution_;
-        fraction_old = fraction_old_;
-        age_old = age_old_;
-        fm = fraction_modern_;
-        vz_delay = vz_delay_;
-        Histogram_bin_num = histogram_bin_count_;
-        Histogram_binsize = histogram_bin_size_;
     }
     return *this;
 }
@@ -100,13 +71,12 @@ CWell& CWell::operator=(const CWell& other)
 void CWell::setDistributionType(const std::string& type)
 {
     distribution_type_ = type;
-    distribution = type;
 
     // Resize parameters vector for this distribution type
     int param_count = getParameterCount(type, histogram_bin_count_);
     if (param_count > 0) {
         parameters_.resize(param_count, 0.0);
-        params.resize(param_count, 0.0);
+
     }
 }
 
@@ -125,22 +95,18 @@ bool CWell::setParameter(const std::string& param_name, double value)
 
         if (lower_name == "f") {
             setFractionOld(value);
-            fraction_old = value;  // Sync public member
             return true;
         }
         else if (lower_name == "fm") {
             setFractionModern(value);
-            fm = value;
             return true;
         }
         else if (lower_name == "vz_delay") {
             setVzDelay(value);
-            vz_delay = value;
             return true;
         }
         else if (lower_name == "age_old") {
             setAgeOld(value);
-            age_old = value;
             return true;
         }
         return false;
@@ -153,7 +119,6 @@ bool CWell::setParameter(const std::string& param_name, double value)
             int index = std::atoi(parts[1].c_str());
             if (index >= 0 && index < static_cast<int>(parameters_.size())) {
                 parameters_[index] = value;
-                params[index] = value;  // Sync public member
                 return true;
             }
         }
@@ -228,8 +193,6 @@ void CWell::createDistribution(double oldest_time, int num_intervals, double mul
                                                                                num_intervals, multiplier);
     }
 
-    // Sync public member
-    young_age_distribution = young_age_distribution_;
 }
 
 // ============================================================================

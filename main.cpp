@@ -13,7 +13,9 @@ void example_tracer_output()
     tracer.setRetardation(1.0);
     tracer.setOldWaterConcentration(5.0);
     tracer.setConstantInput(10.0);
-
+    TimeSeries<double> atmospheric_record("../../Inputs/3H.txt");
+    tracer.setInput(atmospheric_record);
+    tracer.getInput().writefile("output/3H_record.csv");
     // Write to console
     std::cout << tracer.parametersToString() << std::endl;
 
@@ -41,9 +43,10 @@ void example_well_output()
 
     // Write to console
     std::cout << well.parametersToString() << std::endl;
-
+    well.getYoungAgeDistribution().writefile("output/age_dist_exp.txt");
     // Or write to file
     std::ofstream file("well_params.txt");
+
     well.writeInfo(file);
     file.close();
 
@@ -97,12 +100,10 @@ void example_during_optimization()
 int main()
 {
     try {
-        example_tracer_output();
-        example_well_output();
-        example_model_output();  // Uncomment if you have a config file
-        // example_during_optimization();  // Uncomment for optimization example
+        CGWA system("../../Single_well.txt");
+        system.exportToFile("output/Inputfile.txt");
 
-        std::cout << "\n✓ All examples completed successfully!" << std::endl;
+
         return 0;
     }
     catch (const std::exception& e) {

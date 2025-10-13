@@ -49,7 +49,7 @@ public:
     double getAgeOld() const { return age_old_; }
     void setAgeOld(double age) { age_old_ = age; }
 
-    double getFractionModern() const { return fraction_modern_; }
+    double getFractionMineral() const { return fraction_modern_; }
     void setFractionModern(double fm) { fraction_modern_ = fm; }
 
     double getVzDelay() const { return vz_delay_; }
@@ -243,17 +243,7 @@ public:
         int num_intervals,
         double multiplier);
 
-    // For backward compatibility - public access to some members
-    std::string name;                  // Direct access for now
-    std::string distribution;          // Direct access for now
-    std::vector<double> params;        // Direct access for now
-    TimeSeries<double> young_age_distribution;  // Direct access for now
-    double fraction_old;               // Direct access for now
-    double age_old;                    // Direct access for now
-    double vz_delay;                   // Direct access for now
-    double fm;                         // Direct access for now
-    int Histogram_bin_num;             // Direct access for now
-    double Histogram_binsize;          // Direct access for now
+
 
 private:
     // ========================================================================

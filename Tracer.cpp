@@ -3,6 +3,7 @@
 #include <cmath>
 #include <sstream>
 #include <iomanip>
+#include "Well.h"
 
 // ============================================================================
 // Constructors
@@ -142,6 +143,31 @@ double CTracer::calculateConcentration(
 
     // Mix young and old water
     return young_component * (1.0 - fraction_old) + old_component * fraction_old;
+}
+
+double CTracer::calculateConcentration(double time, CWell *well, bool fixed_old_conc) const
+{
+    // Calculate young water component
+    double young_component = 0.0;
+
+    if (!hasSourceTracer()) {
+        // Direct input from atmosphere/surface
+        young_component = calculateYoungWaterComponent(
+            time, well->getYoungAgeDistribution(), well->getVzDelay(), well->getFractionOld());
+    }
+    else {
+        // Production from parent tracer decay
+        young_component = calculateFromParentDecay(
+            time, well->getYoungAgeDistribution(), well->getVzDelay(), well->getFractionOld());
+    }
+
+    // Calculate old water component
+    double old_component = calculateOldWaterComponent(
+        time, well->getFractionOld(), well->getVzDelay(), well->getAgeOld(), well->getFractionMineral(), fixed_old_conc);
+
+
+    // Mix young and old water
+    return young_component * (1.0 - well->getFractionOld()) + old_component * well->getFractionOld();
 }
 
 // ============================================================================

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <set>
 
 // ============================================================================
 // Constructors
@@ -27,8 +28,6 @@ CGWA::CGWA(const CGWA& other)
     , wells_(other.wells_)
     , observations_(other.observations_)
     , parameters_(other.parameters_)
-    , parameter_values_(other.parameter_values_)
-    , obs_std_devs_(other.obs_std_devs_)
     , modeled_data_(other.modeled_data_)
     , projected_data_(other.projected_data_)
     , settings_(other.settings_)
@@ -44,8 +43,6 @@ CGWA& CGWA::operator=(const CGWA& other)
         wells_ = other.wells_;
         observations_ = other.observations_;
         parameters_ = other.parameters_;
-        parameter_values_ = other.parameter_values_;
-        obs_std_devs_ = other.obs_std_devs_;
         modeled_data_ = other.modeled_data_;
         projected_data_ = other.projected_data_;
         settings_ = other.settings_;
@@ -73,7 +70,6 @@ bool CGWA::loadFromFile(const std::string& filename)
     loadTracers();
     loadWells();
     loadObservedData();
-    setupStdDevParameters();
     linkSourceTracers();
     updateConstantInputs();
 
@@ -246,42 +242,67 @@ void CGWA::loadSettings()
 void CGWA::loadParameters()
 {
     parameters_.clear();
-    parameter_values_.clear();
 
     for (size_t i = 0; i < config_data_.keywords.size(); ++i) {
         if (aquiutils::tolower(config_data_.keywords[i]) == "parameter") {
             inverse_enabled_ = true;
 
-            ParameterRange param;
-            param.name = config_data_.values[i];
+            Parameter param;
+            param.SetName(config_data_.values[i]);
 
             // Parse parameter properties
             for (size_t j = 0; j < config_data_.param_names[i].size(); ++j) {
                 std::string pname = aquiutils::tolower(config_data_.param_names[i][j]);
-                double pval = std::atof(config_data_.param_values[i][j].c_str());
+                const std::string& pval_str = config_data_.param_values[i][j];
+                double pval = std::atof(pval_str.c_str());
 
-                if (pname == "low") param.low = pval;
-                else if (pname == "high") param.high = pval;
-                else if (pname == "fixed") param.fixed = (pval != 0.0);
-                else if (pname == "log") param.logarithmic = (pval != 0.0);
-                else if (pname == "applytoall") param.apply_to_all = (pval != 0.0);
+                if (pname == "low") {
+                    param.SetLow(pval);
+                }
+                else if (pname == "high") {
+                    param.SetHigh(pval);
+                }
+                else if (pname == "log") {
+                    // Backward compatibility: support old numeric format
+                    if (pval == 1) {
+                        param.SetPriorDistribution("log-normal");
+                    } else if (pval == 0) {
+                        param.SetPriorDistribution("normal");
+                    } else {
+                        param.SetPriorDistribution("uniform");
+                    }
+                }
+                else if (pname == "prior_distribution") {
+                    // New string format
+                    std::string dist = aquiutils::tolower(pval_str);
+                    if (dist == "log-normal" || dist == "lognormal") {
+                        param.SetPriorDistribution("log-normal");
+                    } else if (dist == "normal") {
+                        param.SetPriorDistribution("normal");
+                    } else if (dist == "uniform") {
+                        param.SetPriorDistribution("uniform");
+                    } else {
+                        param.SetPriorDistribution(dist);
+                    }
+                }
+                else if (pname == "value") {
+                    param.SetValue(pval);
+                }
             }
 
-            parameters_.push_back(param);
+            parameters_.AddParameter(param);
 
             // Initial value: midpoint (or geometric mean if log-scale)
             double initial_value;
-            if (!param.logarithmic) {
-                initial_value = 0.5 * (param.low + param.high);
+            if (param.GetPriorDistribution() != "log-normal") {
+                initial_value = 0.5 * (param.GetRange().low + param.GetRange().high);
             } else {
-                initial_value = std::sqrt(std::abs(param.low * param.high));
-                if (param.low < 0) initial_value = -initial_value;
+                initial_value = std::sqrt(std::abs(param.GetRange().low * param.GetRange().high));
+                if (param.GetRange().low < 0) initial_value = -initial_value;
             }
-            parameter_values_.push_back(initial_value);
         }
     }
 }
-
 // ============================================================================
 // Tracers Loading
 // ============================================================================
@@ -301,7 +322,20 @@ void CGWA::loadTracers()
                 double pval = std::atof(pval_str.c_str());
 
                 if (pname == "input") {
-                    TimeSeries<double> input(settings_.input_path + pval_str);
+                    std::string file_path = pval_str;
+
+                    // Check if it's a full path (contains '/' or '\' or ':' for Windows drive)
+                    bool is_full_path = (file_path.find('/') != std::string::npos) ||
+                                        (file_path.find('\\') != std::string::npos) ||
+                                        (file_path.find(':') != std::string::npos);
+
+                    if (!is_full_path) {
+                        // Relative path - prepend input path
+                        file_path = settings_.input_path + pval_str;
+                    }
+
+                    TimeSeries<double> input(file_path);
+                    std::cout<<"Input file path: " << input.getFilename()<<std::endl;
                     tracer.setInput(input);
                 }
                 else if (pname == "source") {
@@ -319,9 +353,7 @@ void CGWA::loadTracers()
                 if (!est_param.empty()) {
                     int param_idx = findParameter(est_param);
                     if (param_idx >= 0) {
-                        parameters_[param_idx].locations.push_back(tracer.getName());
-                        parameters_[param_idx].quantities.push_back(pname);
-                        parameters_[param_idx].location_types.push_back(1); // 1 = tracer
+                        parameters_[param_idx]->AddLocation(tracer.getName(),pname, "tracer");
                     }
                 }
             }
@@ -342,13 +374,12 @@ void CGWA::loadWells()
     for (size_t i = 0; i < config_data_.keywords.size(); ++i) {
         if (aquiutils::tolower(config_data_.keywords[i]) == "well") {
             CWell well;
-            well.name = config_data_.values[i];
-            well.vz_delay = 0.0;
+            well.setName(config_data_.values[i]);
+            well.setVzDelay(0.0);
 
             // Find distribution type
             for (size_t j = 0; j < config_data_.param_names[i].size(); ++j) {
                 if (aquiutils::tolower(config_data_.param_names[i][j]) == "distribution") {
-                    well.distribution = config_data_.param_values[i][j];
                     well.setDistributionType(config_data_.param_values[i][j]);
                     break;
                 }
@@ -366,9 +397,7 @@ void CGWA::loadWells()
                 if (!est_param.empty()) {
                     int param_idx = findParameter(est_param);
                     if (param_idx >= 0) {
-                        parameters_[param_idx].locations.push_back(well.name);
-                        parameters_[param_idx].quantities.push_back(pname);
-                        parameters_[param_idx].location_types.push_back(0); // 0 = well
+                        parameters_[param_idx]->AddLocation(well.getName(), pname, "well");
                     }
                 }
             }
@@ -389,7 +418,7 @@ void CGWA::loadObservedData()
     for (size_t i = 0; i < config_data_.keywords.size(); ++i) {
         if (aquiutils::tolower(config_data_.keywords[i]) == "observed") {
             ObservedData obs;
-            obs.name = config_data_.values[i];
+            obs.SetName(config_data_.values[i]);
 
             // Parse observation properties
             for (size_t j = 0; j < config_data_.param_names[i].size(); ++j) {
@@ -397,20 +426,42 @@ void CGWA::loadObservedData()
                 const std::string& pval_str = config_data_.param_values[i][j];
 
                 if (pname == "well") {
-                    obs.well_index = findWell(pval_str);
+                    obs.SetLocation(pval_str);  // Store well name directly
                 }
                 else if (pname == "tracer") {
-                    obs.tracer_index = findTracer(pval_str);
+                    obs.SetQuantity(pval_str);  // Store tracer name directly
                 }
-                else if (pname == "std_no") {
-                    obs.std_parameter_index = std::atoi(pval_str.c_str());
+                else if (pname == "std_param" || pname == "std") {
+                    // Reference to a parameter name (e.g., "std_3H", "std_tracers")
+                    obs.SetStdParameterName(pval_str);
                 }
                 else if (pname == "error_structure") {
-                    obs.error_structure = std::atoi(pval_str.c_str());
+                    // Support both string and numeric formats
+                    std::string error_str = aquiutils::tolower(pval_str);
+                    if (error_str == "normal") {
+                        obs.error_structure = 0;
+                    } else if (error_str == "log-normal" || error_str == "lognormal") {
+                        obs.error_structure = 1;
+                    } else {
+                        // Backward compatibility with numeric format
+                        obs.error_structure = std::atoi(pval_str.c_str());
+                    }
                 }
                 else if (pname == "observed_data") {
-                    obs.filename = pval_str;
-                    obs.data = TimeSeries<double>(settings_.input_path + pval_str);
+                    std::string file_path = pval_str;
+
+                    // Check if it's a full path (contains '/' or '\' or ':' for Windows drive)
+                    bool is_full_path = (file_path.find('/') != std::string::npos) ||
+                                        (file_path.find('\\') != std::string::npos) ||
+                                        (file_path.find(':') != std::string::npos);
+
+                    if (!is_full_path) {
+                        // Relative path - prepend input path
+                        file_path = settings_.input_path + pval_str;
+                    }
+
+                    TimeSeries<double> data(file_path);
+                    obs.SetObservedTimeSeries(data);
                 }
                 else if (pname == "detect_limit_value") {
                     obs.has_detection_limit = true;
@@ -426,53 +477,18 @@ void CGWA::loadObservedData()
     }
 
     // Calculate max data count per well
-    std::vector<int> max_counts(wells_.size(), 0);
+    std::map<std::string, int> max_counts;
     for (const auto& obs : observations_) {
-        if (obs.well_index >= 0 && obs.well_index < static_cast<int>(max_counts.size())) {
-            max_counts[obs.well_index] = std::max(max_counts[obs.well_index],
-                                                  static_cast<int>(obs.data.size()));
-        }
+        const std::string& location = obs.GetLocation();
+        max_counts[location] = std::max(max_counts[location],
+                                        static_cast<int>(obs.GetObservedData().size()));
     }
 
     for (auto& obs : observations_) {
-        if (obs.well_index >= 0 && obs.well_index < static_cast<int>(max_counts.size())) {
-            obs.max_data_count = max_counts[obs.well_index];
-        }
+        const std::string& location = obs.GetLocation();
+        obs.max_data_count = max_counts[location];
     }
 }
-
-// ============================================================================
-// Standard Deviation Parameters Setup
-// ============================================================================
-
-void CGWA::setupStdDevParameters()
-{
-    std::vector<int> std_indices;
-
-    // Find unique std_no values
-    for (auto& obs : observations_) {
-        if (std::find(std_indices.begin(), std_indices.end(),
-                      obs.std_parameter_index) == std_indices.end()) {
-            std_indices.push_back(obs.std_parameter_index);
-
-            // Create parameter for this std deviation
-            ParameterRange param;
-            param.name = "std_" + std::to_string(obs.std_parameter_index);
-            param.low = std::exp(-4.0);
-            param.high = std::exp(4.0);
-            param.fixed = false;
-            param.logarithmic = true;
-            param.apply_to_all = true;
-
-            obs.std_parameter_index = parameters_.size();
-            parameters_.push_back(param);
-            parameter_values_.push_back(std::sqrt(param.low * param.high));
-        }
-    }
-
-    obs_std_devs_.resize(std_indices.size());
-}
-
 // ============================================================================
 // Source Tracer Linking
 // ============================================================================
@@ -496,7 +512,7 @@ void CGWA::linkSourceTracers()
 int CGWA::findParameter(const std::string& name) const
 {
     for (size_t i = 0; i < parameters_.size(); ++i) {
-        if (aquiutils::tolower(name) == aquiutils::tolower(parameters_[i].name)) {
+        if (aquiutils::tolower(name) == aquiutils::tolower(parameters_[i]->GetName())) {
             return static_cast<int>(i);
         }
     }
@@ -516,7 +532,7 @@ int CGWA::findTracer(const std::string& name) const
 int CGWA::findWell(const std::string& name) const
 {
     for (size_t i = 0; i < wells_.size(); ++i) {
-        if (aquiutils::tolower(name) == aquiutils::tolower(wells_[i].name)) {
+        if (aquiutils::tolower(name) == aquiutils::tolower(wells_[i].getName())) {
             return static_cast<int>(i);
         }
     }
@@ -527,74 +543,93 @@ int CGWA::findWell(const std::string& name) const
 // Parameter Management
 // ============================================================================
 
-const ParameterRange& CGWA::getParameter(size_t index) const
+Parameter* CGWA::getParameter(size_t index)
 {
-    if (index >= parameters_.size()) {
-        throw std::out_of_range("Parameter index out of range");
-    }
-    return parameters_[index];
+    return parameters_[static_cast<int>(index)];
+}
+
+const Parameter* CGWA::getParameter(size_t index) const
+{
+    return parameters_[static_cast<int>(index)];
 }
 
 void CGWA::setParameterValue(size_t index, double value)
 {
-    if (index >= parameter_values_.size()) {
+    Parameter* param = parameters_[static_cast<int>(index)];
+    if (!param) {
         throw std::out_of_range("Parameter index out of range");
     }
 
-    parameter_values_[index] = value;
+    param->SetValue(value);
     applyParameterToModel(index, value);
 }
 
 void CGWA::setAllParameterValues(const std::vector<double>& values)
 {
-    if (values.size() != parameter_values_.size()) {
-        throw std::invalid_argument("Parameter value count mismatch");
+    if (values.size() == 0)
+    {
+        // Apply current values from parameters
+        for (int i = 0; i < parameters_.size(); ++i) {
+            Parameter* param = parameters_[i];
+            if (param) {
+                applyParameterToModel(i, param->GetValue());
+            }
+        }
     }
+    else
+    {
+        if (values.size() != static_cast<size_t>(parameters_.size())) {
+            throw std::invalid_argument("Parameter value count mismatch");
+        }
 
-    for (size_t i = 0; i < values.size(); ++i) {
-        parameter_values_[i] = values[i];
-        applyParameterToModel(i, values[i]);
+        for (size_t i = 0; i < values.size(); ++i) {
+            Parameter* param = parameters_[static_cast<int>(i)];
+            if (param) {
+                param->SetValue(values[i]);
+                applyParameterToModel(i, values[i]);
+            }
+        }
     }
 }
 
 void CGWA::applyParameterToModel(size_t param_index, double value)
 {
-    if (param_index >= parameters_.size()) {
+    Parameter* param = parameters_[static_cast<int>(param_index)];
+    if (!param) {
         return;
     }
 
-    const ParameterRange& param = parameters_[param_index];
-
     // Apply to wells and tracers
-    for (size_t i = 0; i < param.locations.size(); ++i) {
-        if (param.location_types[i] == 1) {
+    const std::vector<std::string>& locations = param->GetLocations();
+    const std::vector<std::string>& quantities = param->GetQuantities();
+    const std::vector<std::string>& location_types = param->GetLocationTypes();
+
+    for (size_t i = 0; i < locations.size(); ++i) {
+        if (location_types[i] == "tracer" || location_types[i] == "1") {
             // Apply to tracer
-            int tracer_idx = findTracer(param.locations[i]);
+            int tracer_idx = findTracer(locations[i]);
             if (tracer_idx >= 0) {
-                tracers_[tracer_idx].setParameter(param.quantities[i], value);
+                tracers_[tracer_idx].setParameter(quantities[i], value);
             }
         }
-        else if (param.location_types[i] == 0) {
+        else if (location_types[i] == "well" || location_types[i] == "0") {
             // Apply to well
-            int well_idx = findWell(param.locations[i]);
+            int well_idx = findWell(locations[i]);
             if (well_idx >= 0) {
-                wells_[well_idx].setParameter(param.quantities[i], value);
+                wells_[well_idx].setParameter(quantities[i], value);
             }
         }
     }
 
-    // Check if this is a std deviation parameter
+    // Apply standard deviation to observations that reference this parameter
     for (auto& obs : observations_) {
-        if (obs.std_parameter_index == static_cast<int>(param_index)) {
-            if (obs.std_parameter_index < static_cast<int>(obs_std_devs_.size())) {
-                obs_std_devs_[obs.std_parameter_index] = value;
-            }
+        if (obs.GetStdParameterName() == param->GetName()) {
+            obs.SetErrorStdDev(value);
         }
     }
 
     updateConstantInputs();
 }
-
 void CGWA::updateConstantInputs()
 {
     for (auto& tracer : tracers_) {
@@ -608,8 +643,11 @@ void CGWA::updateConstantInputs()
 // Forward Modeling
 // ============================================================================
 
-void CGWA::runForwardModel()
+void CGWA::runForwardModel(bool applyparameters)
 {
+    if (applyparameters)
+        this->setAllParameterValues();
+
     modeled_data_ = TimeSeriesSet<double>(observations_.size());
 
     double oldest_time = getOldestInputTime();
@@ -621,32 +659,40 @@ void CGWA::runForwardModel()
 
     // Calculate concentrations at observation times
     for (size_t i = 0; i < observations_.size(); ++i) {
-        const ObservedData& obs = observations_[i];
+        ObservedData& obs = observations_[i];
 
-        if (obs.well_index < 0 || obs.well_index >= static_cast<int>(wells_.size()) ||
-            obs.tracer_index < 0 || obs.tracer_index >= static_cast<int>(tracers_.size())) {
+        int well_idx = findWell(obs.GetLocation());
+        int tracer_idx = findTracer(obs.GetQuantity());
+
+        if (well_idx < 0 || well_idx >= static_cast<int>(wells_.size()) ||
+            tracer_idx < 0 || tracer_idx >= static_cast<int>(tracers_.size())) {
             continue;
         }
 
-        const CWell& well = wells_[obs.well_index];
-        const CTracer& tracer = tracers_[obs.tracer_index];
+        const CWell& well = wells_[well_idx];
+        const CTracer& tracer = tracers_[tracer_idx];
 
-        modeled_data_.setname(i, obs.name);
+        modeled_data_.setname(i, obs.GetName());
+        TimeSeries<double> modeled;
 
-        for (size_t j = 0; j < obs.data.size(); ++j) {
-            double time = obs.data.getTime(j);
+        const TimeSeries<double>& observed = obs.GetObservedData();
+        for (size_t j = 0; j < observed.size(); ++j) {
+            double time = observed.getTime(j);
             double conc = tracer.calculateConcentration(
                 time,
-                well.young_age_distribution,
-                well.fraction_old,
-                well.vz_delay,
+                well.getYoungAgeDistribution(),
+                well.getFractionOld(),
+                well.getVzDelay(),
                 settings_.fixed_old_tracer,
-                well.age_old,
-                well.fm
+                well.getAgeOld(),
+                well.getFractionMineral()
                 );
 
-            modeled_data_[i].append(time, conc);
+            modeled.append(time, conc);
         }
+
+        obs.SetModeledTimeSeries(modeled);
+        modeled_data_[i] = modeled;
     }
 }
 
@@ -673,7 +719,7 @@ TimeSeriesSet<double> CGWA::runProjection()
         for (size_t j = 0; j < tracers_.size(); ++j) {
             const CTracer& tracer = tracers_[j];
 
-            projected_data_.setname(index, well.name + "_" + tracer.getName());
+            projected_data_.setname(index, well.getName() + "_" + tracer.getName());
 
             for (double t = settings_.project_start;
                  t < settings_.project_finish;
@@ -681,12 +727,12 @@ TimeSeriesSet<double> CGWA::runProjection()
 
                 double conc = tracer.calculateConcentration(
                     t,
-                    well.young_age_distribution,
-                    well.fraction_old,
-                    well.vz_delay,
+                    well.getYoungAgeDistribution(),
+                    well.getFractionOld(),
+                    well.getVzDelay(),
                     settings_.fixed_old_tracer,
-                    well.age_old,
-                    well.fm
+                    well.getAgeOld(),
+                    well.getFractionMineral()
                     );
 
                 projected_data_[index].append(t, conc);
@@ -744,15 +790,14 @@ double CGWA::calculateObservationLikelihood(size_t obs_index) const
 
     const ObservedData& obs = observations_[obs_index];
 
-    if (obs.std_parameter_index < 0 ||
-        obs.std_parameter_index >= static_cast<int>(obs_std_devs_.size())) {
-        return 0.0;
+    double std_dev = obs.GetErrorStdDev();
+    if (std_dev <= 0.0) {
+        return 0.0;  // Invalid std dev
     }
 
-    double std_dev = obs_std_devs_[obs.std_parameter_index];
     double variance = std_dev * std_dev;
 
-    const TimeSeries<double>& observed = obs.data;
+    const TimeSeries<double>& observed = obs.GetObservedData();
     const TimeSeries<double>& modeled = modeled_data_[obs_index];
 
     // Data ratio for normalization
@@ -826,13 +871,28 @@ std::string CGWA::parametersToString() const
     // Parameters (if inverse modeling)
     if (inverse_enabled_) {
         oss << "\nInverse Modeling Parameters (" << parameters_.size() << "):\n";
-        for (size_t i = 0; i < parameters_.size(); ++i) {
-            const ParameterRange& param = parameters_[i];
-            oss << "  " << param.name << ": "
-                << "value=" << parameter_values_[i] << ", "
-                << "range=[" << param.low << ", " << param.high << "], "
-                << "log=" << (param.logarithmic ? "yes" : "no") << ", "
-                << "fixed=" << (param.fixed ? "yes" : "no") << "\n";
+        for (int i = 0; i < parameters_.size(); ++i) {
+            const Parameter* param = parameters_[i];
+            if (!param) continue;
+
+            oss << "  " << param->GetName() << ":\n"
+                << "    Value: " << param->GetValue() << "\n"
+                << "    Range: [" << param->GetRange().low << ", " << param->GetRange().high << "]\n"
+                << "    Prior distribution: " << param->GetPriorDistribution() << "\n";
+
+            // Show locations/quantities/types if any
+            const std::vector<std::string>& locations = param->GetLocations();
+            const std::vector<std::string>& quantities = param->GetQuantities();
+            const std::vector<std::string>& location_types = param->GetLocationTypes();
+
+            if (!locations.empty()) {
+                oss << "    Applies to:\n";
+                for (size_t j = 0; j < locations.size(); ++j) {
+                    oss << "      - Location: " << locations[j]
+                        << ", Quantity: " << quantities[j]
+                        << ", Type: " << location_types[j] << "\n";
+                }
+            }
         }
     }
 
@@ -840,10 +900,10 @@ std::string CGWA::parametersToString() const
     oss << "\nObservations (" << observations_.size() << "):\n";
     for (size_t i = 0; i < observations_.size(); ++i) {
         const ObservedData& obs = observations_[i];
-        oss << "  " << obs.name << ": "
-            << "well=" << obs.well_index << ", "
-            << "tracer=" << obs.tracer_index << ", "
-            << "data_points=" << obs.data.size() << "\n";
+        oss << "  " << obs.GetName() << ": "
+            << "location=" << obs.GetLocation() << ", "
+            << "quantity=" << obs.GetQuantity() << ", "
+            << "data_points=" << obs.GetObservedData().size() << "\n";
     }
 
     return oss.str();
@@ -858,7 +918,293 @@ void CGWA::writeParameterValues(std::ostream& out) const
 {
     out << std::fixed << std::setprecision(8);
 
-    for (size_t i = 0; i < parameters_.size(); ++i) {
-        out << parameters_[i].name << "\t" << parameter_values_[i] << "\n";
+    for (int i = 0; i < parameters_.size(); ++i) {
+        const Parameter* param = parameters_[i];
+        if (param) {
+            out << param->GetName() << "\t" << param->GetValue() << "\n";
+        }
     }
+}
+
+const std::vector<double> CGWA::getParameterValues() const
+{
+    std::vector<double> values;
+    values.reserve(parameters_.size());
+
+    for (int i = 0; i < parameters_.size(); ++i) {
+        const Parameter* param = parameters_[i];
+        if (param) {
+            values.push_back(param->GetValue());
+        }
+    }
+
+    return values;
+}
+
+std::vector<double> CGWA::getObservationStdDevs() const
+{
+    std::vector<double> std_devs;
+    std_devs.reserve(observations_.size());
+
+    for (const auto& obs : observations_) {
+        int param_idx = findParameter(obs.GetStdParameterName());
+        if (param_idx >= 0) {
+            std_devs.push_back(parameters_[param_idx]->GetValue());
+        } else {
+            std_devs.push_back(0.0); // Default if parameter not found
+        }
+    }
+
+    return std_devs;
+}
+
+bool CGWA::exportToFile(const std::string& filename) const
+{
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Cannot open file for writing: " << filename << std::endl;
+        return false;
+    }
+
+    file << std::fixed << std::setprecision(10);
+
+    // Write settings
+    file << "path=" << settings_.input_path << "\n";
+    file << "outpath=" << settings_.output_path << "\n";
+    file << "\n";
+
+    // Write wells
+    for (const auto& well : wells_) {
+        file << "well=" << well.getName() << ", {";
+
+        // Find parameters that apply to this well
+        std::map<std::string, std::string> well_params;
+        for (int i = 0; i < parameters_.size(); ++i) {
+            const Parameter* param = parameters_[i];
+            if (!param) continue;
+
+            const std::vector<std::string>& locations = param->GetLocations();
+            const std::vector<std::string>& quantities = param->GetQuantities();
+            const std::vector<std::string>& location_types = param->GetLocationTypes();
+
+            for (size_t j = 0; j < locations.size(); ++j) {
+                if ((location_types[j] == "well" || location_types[j] == "0") &&
+                    locations[j] == well.getName()) {
+                    well_params[quantities[j]] = "p[" + param->GetName() + "]";
+                }
+            }
+        }
+
+        // Write well parameters
+        bool first = true;
+        if (well_params.find("f") != well_params.end()) {
+            file << "f=" << well_params["f"];
+            first = false;
+        }
+
+        // Write distribution parameters
+        for (int i = 0; i < 10; ++i) {
+            std::string key = "param[" + std::to_string(i) + "]";
+            if (well_params.find(key) != well_params.end()) {
+                if (!first) file << ";";
+                file << key << "=" << well_params[key];
+                first = false;
+            }
+        }
+
+        if (!first) file << ";";
+        file << "distribution=" << well.getDistributionType();
+
+        if (well_params.find("age_old") != well_params.end()) {
+            file << "; age_old=" << well_params["age_old"];
+        }
+        if (well_params.find("fm") != well_params.end()) {
+            file << ";fm=" << well_params["fm"];
+        }
+
+        file << "}\n";
+    }
+    file << "\n";
+
+    // Write tracers
+    for (const auto& tracer : tracers_) {
+        file << "tracer=" << tracer.getName() << ", {";
+
+        bool first = true;
+
+        // Find parameters that apply to this tracer
+        std::map<std::string, std::string> tracer_params;
+        for (int i = 0; i < parameters_.size(); ++i) {
+            const Parameter* param = parameters_[i];
+            if (!param) continue;
+
+            const std::vector<std::string>& locations = param->GetLocations();
+            const std::vector<std::string>& quantities = param->GetQuantities();
+            const std::vector<std::string>& location_types = param->GetLocationTypes();
+
+            for (size_t j = 0; j < locations.size(); ++j) {
+                if ((location_types[j] == "tracer" || location_types[j] == "1") &&
+                    locations[j] == tracer.getName()) {
+                    tracer_params[quantities[j]] = "p[" + param->GetName() + "]";
+                }
+            }
+        }
+
+        // Write source tracer first if it exists
+        if (!tracer.getSourceTracerName().empty()) {
+            file << "source=" << tracer.getSourceTracerName();
+            first = false;
+        }
+
+        // Write decay rate
+        if (tracer.getDecayRate() != 0.0 || tracer_params.find("decay") != tracer_params.end()) {
+            if (!first) file << "; ";
+            if (tracer_params.find("decay") != tracer_params.end()) {
+                file << "decay=" << tracer_params["decay"];
+            } else {
+                file << "decay=" << tracer.getDecayRate();
+            }
+            first = false;
+        }
+
+        // Write fm
+        if (tracer.getMaxFractionModern() != 0.0) {
+            if (!first) file << ";";
+            file << "fm=" << tracer.getMaxFractionModern();
+            first = false;
+        }
+
+        // Write input file (only if not from source tracer and has file)
+        if (tracer.getSourceTracerName().empty() && tracer.hasInputFile()) {
+            if (!first) file << ";";
+
+            std::string input_file = tracer.getInputFilename();
+
+            // Check if the file is in the input_path directory
+            if (!settings_.input_path.empty() && input_file.find(settings_.input_path) == 0) {
+                // File is in input_path, strip the path to make it relative
+                input_file = input_file.substr(settings_.input_path.length());
+            }
+            // Otherwise keep the full path (file is somewhere else)
+
+            file << "input=" << input_file;
+            first = false;
+        }
+
+        // Write constant input
+        if (tracer.hasConstantInput()) {
+            if (!first) file << ";";
+            if (tracer_params.find("constant_input") != tracer_params.end()) {
+                file << "constant_input=" << tracer_params["constant_input"];
+            } else {
+                file << "constant_input=" << tracer.getConstantInputValue();
+            }
+            first = false;
+        }
+
+        // Write co parameter
+        if (tracer_params.find("co") != tracer_params.end()) {
+            if (!first) file << ";";
+            file << "co=" << tracer_params["co"];
+            first = false;
+        }
+
+        // Write cm parameter
+        if (tracer_params.find("cm") != tracer_params.end()) {
+            if (!first) file << ";";
+            file << "cm=" << tracer_params["cm"];
+            first = false;
+        }
+
+        // Write linear production flag
+        if (tracer.hasLinearProduction()) {
+            if (!first) file << ";";
+            file << "linear_prod=1";
+            first = false;
+        }
+
+        file << "}\n";
+    }
+    file << "\n";
+
+    // Write observations
+    for (const auto& obs : observations_) {
+        file << "observed=" << obs.GetName() << ", {";
+        file << "well=" << obs.GetLocation();
+        file << "; tracer=" << obs.GetQuantity();
+        file << "; std_param=" << obs.GetStdParameterName();
+
+        // Issue 2: Fixed - Write error_structure as string instead of number
+        if (obs.error_structure == 0) {
+            file << "; error_structure=normal";
+        } else if (obs.error_structure == 1) {
+            file << "; error_structure=log-normal";
+        } else {
+            file << "; error_structure=" << obs.error_structure;
+        }
+
+        // Get filename from observed data TimeSeries
+        const TimeSeries<double>& observed_data = obs.GetObservedData();
+        if (observed_data.size() > 0 && !observed_data.getFilename().empty()) {
+            std::string data_file = observed_data.getFilename();
+
+            // Check if the file is in the input_path directory
+            if (!settings_.input_path.empty() && data_file.find(settings_.input_path) == 0) {
+                // File is in input_path, strip the path to make it relative
+                data_file = data_file.substr(settings_.input_path.length());
+            }
+            // Otherwise keep the full path (file is somewhere else)
+
+            file << "; observed_data=" << data_file;
+        }
+
+        if (obs.has_detection_limit) {
+            file << "; detect_limit_value=" << obs.detection_limit_value;
+        }
+
+        if (obs.count_max) {
+            file << "; count_max=1";
+        }
+
+        file << "}\n";
+    }
+    file << "\n";
+
+    // Write project settings
+    if (settings_.project_enabled) {
+        file << "project_start=" << settings_.project_start << "\n";
+        file << "project_end=" << settings_.project_finish << "\n";
+        file << "\n";
+    }
+
+    // Write output file settings
+    if (!settings_.pe_info_filename.empty()) {
+        file << "pe_info=" << settings_.pe_info_filename << "\n";
+    }
+    if (!settings_.det_output_filename.empty()) {
+        file << "detout=" << settings_.det_output_filename << "\n";
+    }
+    if (!settings_.realized_param_filename.empty()) {
+        file << "realizedparam=" << settings_.realized_param_filename << "\n";
+    }
+    file << "\n";
+
+    // Write parameters
+    for (int i = 0; i < parameters_.size(); ++i) {
+        const Parameter* param = parameters_[i];
+        if (!param) continue;
+
+        file << "parameter=" << param->GetName() << ", {";
+        file << "low=" << param->GetRange().low;
+        file << ";high=" << param->GetRange().high;
+
+        // Write prior distribution as string
+        file << "; prior_distribution=" << param->GetPriorDistribution();
+
+        file << "; value=" << param->GetValue();
+        file << "}\n";
+    }
+
+    file.close();
+    return true;
 }

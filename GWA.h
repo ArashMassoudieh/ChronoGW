@@ -8,42 +8,22 @@
 #include <string>
 #include <map>
 #include <memory>
+#include "parameter_set.h"
+#include "observation.h"
 
-/**
- * @brief Parameter range specification for inverse modeling
- */
-struct ParameterRange
-{
-    std::string name;                    ///< Parameter name
-    double low;                          ///< Lower bound
-    double high;                         ///< Upper bound
-    bool fixed;                          ///< Whether parameter is fixed
-    bool logarithmic;                    ///< Use log-scale for this parameter
-    bool apply_to_all;                   ///< Apply same value to all locations
-    double temperature_correction = 1.0; ///< Temperature correction factor
-
-    std::vector<std::string> locations;  ///< Wells or tracers this parameter applies to
-    std::vector<std::string> quantities; ///< Parameter names at each location
-    std::vector<int> location_types;     ///< 0=well, 1=tracer
-
-    ParameterRange()
-        : low(0.0), high(0.0), fixed(false)
-        , logarithmic(false), apply_to_all(true) {}
-};
 
 /**
  * @brief Observed data characteristics for inverse modeling
  */
-struct ObservedData
+/**
+ * @brief Extended observation data for groundwater age modeling
+ *
+ * Extends base Observation class with groundwater-specific properties
+ * like detection limits and error structures
+ */
+struct ObservedData : public Observation
 {
-    std::string name;                    ///< Observable name
-    int well_index;                      ///< Index into wells vector
-    int tracer_index;                    ///< Index into tracers vector
-    int std_parameter_index;             ///< Index for std deviation parameter
     int error_structure;                 ///< 0=normal, 1=lognormal
-
-    std::string filename;                ///< Data filename
-    TimeSeries<double> data;             ///< Observed time series
 
     bool has_detection_limit;            ///< Whether detection limit applies
     double detection_limit_value;        ///< Detection limit value
@@ -52,8 +32,7 @@ struct ObservedData
     bool count_max;                      ///< Whether to normalize by max count
 
     ObservedData()
-        : well_index(-1), tracer_index(-1), std_parameter_index(-1)
-        , error_structure(0), has_detection_limit(false)
+        : error_structure(0), has_detection_limit(false)
         , detection_limit_value(0.0), max_data_count(1), count_max(false) {}
 };
 
@@ -128,12 +107,13 @@ public:
     /**
      * @brief Get parameter by index
      */
-    const ParameterRange& getParameter(size_t index) const;
+    const Parameter* getParameter(size_t index) const;
+    Parameter* getParameter(size_t index);
 
     /**
      * @brief Get all parameter values
      */
-    const std::vector<double>& getParameterValues() const { return parameter_values_; }
+    const std::vector<double> getParameterValues() const;
 
     /**
      * @brief Set parameter value by index
@@ -146,7 +126,7 @@ public:
      * @brief Set all parameter values at once
      * @param values Vector of parameter values
      */
-    void setAllParameterValues(const std::vector<double>& values);
+    void setAllParameterValues(const std::vector<double>& values = vector<double>());
 
     /**
      * @brief Find parameter index by name
@@ -179,7 +159,7 @@ public:
     /**
      * @brief Run forward model to calculate concentrations at observation times
      */
-    void runForwardModel();
+    void runForwardModel(bool applyparameters = true);
 
     /**
      * @brief Get modeled concentrations (after calling runForwardModel)
@@ -209,9 +189,10 @@ public:
     double calculateLogLikelihood();
 
     /**
-     * @brief Get observation standard deviations
-     */
-    const std::vector<double>& getObservationStdDevs() const { return obs_std_devs_; }
+    * @brief Get observation standard deviations
+    * @return Vector of std dev values corresponding to each observation
+    */
+    std::vector<double> getObservationStdDevs() const;
 
     /**
      * @brief Whether inverse modeling is enabled
@@ -244,6 +225,13 @@ public:
 
     const ModelSettings& getSettings() const { return settings_; }
     ModelSettings& getSettingsMutable() { return settings_; }
+
+    /**
+     * @brief Export model configuration to file
+     * @param filename Output file path
+     * @return true if successful
+     */
+    bool exportToFile(const std::string& filename) const;
 
 private:
     // ========================================================================
@@ -286,11 +274,6 @@ private:
     void loadObservedData();
 
     /**
-     * @brief Setup automatic standard deviation parameters
-     */
-    void setupStdDevParameters();
-
-    /**
      * @brief Link tracers to their source tracers by name
      */
     void linkSourceTracers();
@@ -329,9 +312,7 @@ private:
     std::vector<ObservedData> observations_;
 
     // Parameters for inverse modeling
-    std::vector<ParameterRange> parameters_;
-    std::vector<double> parameter_values_;
-    std::vector<double> obs_std_devs_;
+    Parameter_Set parameters_;
 
     // Model results
     TimeSeriesSet<double> modeled_data_;

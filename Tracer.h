@@ -4,6 +4,8 @@
 #include <memory>
 #include <optional>
 
+class CWell;
+
 /**
  * @brief Represents a tracer in groundwater with transport and transformation properties
  *
@@ -31,7 +33,9 @@ public:
     // Core Tracer Properties - Getters
     // ========================================================================
 
-    const std::string& getName() const { return name_; }
+    const std::string getName() const { return name_; }
+    const std::string getInputFilename() const { return input_.getFilename(); }
+    bool hasInputFile() const { return !input_.getFilename().empty() && input_.size() > 0; }
     double getInputMultiplier() const { return input_multiplier_; }
     double getDecayRate() const { return decay_rate_; }
     double getRetardation() const { return retardation_; }
@@ -120,6 +124,8 @@ public:
         double age_old = 100000.0,
         double fraction_modern = 0.0) const;
 
+
+    double calculateConcentration(double time, CWell *well, bool fixed_old_conc) const;
 private:
     // ========================================================================
     // Private Helper Methods
@@ -160,6 +166,7 @@ private:
 
     std::string name_;                    ///< Tracer name/identifier
     TimeSeries<double> input_;            ///< Input concentration time series
+
 
     // Transport and transformation properties
     double input_multiplier_ = 1.0;       ///< Multiplier for input concentrations
