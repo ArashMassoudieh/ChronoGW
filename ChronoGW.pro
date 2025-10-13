@@ -10,7 +10,7 @@ INCLUDEPATH += InverseModeling/include/MCMC
 INCLUDEPATH += Utilities/
 
 DEFINES += GSL
-DEFINES += arma_
+DEFINES += _arma
 
 SOURCES += \
     GWA.cpp \
