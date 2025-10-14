@@ -106,6 +106,15 @@ int main()
         CGWA system("../../Single_well.txt");
         system.exportToFile("output/Inputfile.txt");
         CGA<CGWA> ga(&system);
+        ga.SetProperty("maxpop","100");
+        ga.SetProperty("ngen", "100");
+        ga.SetProperty("pcross", "1");
+        ga.SetProperty("pmute","0.075");
+        ga.SetProperty("shakescale","0.05");
+        ga.SetProperty("shakescalered","75");
+        ga.SetProperty("outputfile","GA_Output.txt");
+
+        ga.optimize();
         CMCMC<CGWA> mcmc(&system);
         LevenbergMarquardt<CGWA> lm(&system);
 

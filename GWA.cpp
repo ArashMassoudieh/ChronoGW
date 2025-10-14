@@ -546,7 +546,7 @@ const Parameter* CGWA::getParameter(size_t index) const
     return parameters_[static_cast<int>(index)];
 }
 
-void CGWA::setParameterValue(size_t index, double value)
+void CGWA::SetParameterValue(size_t index, double value)
 {
     Parameter* param = parameters_[static_cast<int>(index)];
     if (!param) {

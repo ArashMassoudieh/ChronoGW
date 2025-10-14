@@ -109,7 +109,7 @@ public:
      * @param index Parameter index
      * @param value New value
      */
-    void setParameterValue(size_t index, double value);
+    void SetParameterValue(size_t index, double value);
 
     /**
      * @brief Set all parameter values at once
@@ -135,7 +135,7 @@ public:
     const CTracer& getTracer(size_t index) const { return tracers_[index]; }
     const CWell& getWell(size_t index) const { return wells_[index]; }
     const Observation& getObservation(size_t index) const { return observations_[index]; }
-
+    Observation* observation(size_t index) {return &observations_[index];}
     /**
      * @brief Get pointer to observations vector as base Observation type
      * @return Pointer to vector of Observation
@@ -193,7 +193,9 @@ public:
      * Used by MCMC and optimization algorithms
      */
     double calculateLogLikelihood();
+    double GetObjectiveFunctionValue() {return calculateLogLikelihood(); }
 
+    bool GetSolutionFailed() {return false; }
     /**
     * @brief Get observation standard deviations
     * @return Vector of std dev values corresponding to each observation
@@ -228,6 +230,8 @@ public:
     // ========================================================================
     // Settings Access
     // ========================================================================
+
+    double GetSimulationDuration() const {return 0; }
 
     const ModelSettings& getSettings() const { return settings_; }
     ModelSettings& getSettingsMutable() { return settings_; }
