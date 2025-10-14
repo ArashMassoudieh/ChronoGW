@@ -417,7 +417,7 @@ void CGWA::loadObservedData()
 
     for (size_t i = 0; i < config_data_.keywords.size(); ++i) {
         if (aquiutils::tolower(config_data_.keywords[i]) == "observed") {
-            ObservedData obs;
+            Observation obs;
             obs.SetName(config_data_.values[i]);
 
             // Parse observation properties
@@ -438,14 +438,7 @@ void CGWA::loadObservedData()
                 else if (pname == "error_structure") {
                     // Support both string and numeric formats
                     std::string error_str = aquiutils::tolower(pval_str);
-                    if (error_str == "normal") {
-                        obs.error_structure = 0;
-                    } else if (error_str == "log-normal" || error_str == "lognormal") {
-                        obs.error_structure = 1;
-                    } else {
-                        // Backward compatibility with numeric format
-                        obs.error_structure = std::atoi(pval_str.c_str());
-                    }
+                    obs.SetErrorStructure(error_str);
                 }
                 else if (pname == "observed_data") {
                     std::string file_path = pval_str;
@@ -464,11 +457,11 @@ void CGWA::loadObservedData()
                     obs.SetObservedTimeSeries(data);
                 }
                 else if (pname == "detect_limit_value") {
-                    obs.has_detection_limit = true;
-                    obs.detection_limit_value = std::atof(pval_str.c_str());
+                    obs.SetHasDetectionLimit(true);
+                    obs.SetDetectionLimitValue(std::atof(pval_str.c_str()));
                 }
                 else if (pname == "count_max") {
-                    obs.count_max = (std::atoi(pval_str.c_str()) != 0);
+                    obs.SetCountMax(std::atoi(pval_str.c_str()) != 0);
                 }
             }
 
@@ -486,7 +479,7 @@ void CGWA::loadObservedData()
 
     for (auto& obs : observations_) {
         const std::string& location = obs.GetLocation();
-        obs.max_data_count = max_counts[location];
+        obs.SetCountMax(max_counts[location]);
     }
 }
 // ============================================================================
@@ -659,7 +652,7 @@ void CGWA::runForwardModel(bool applyparameters)
 
     // Calculate concentrations at observation times
     for (size_t i = 0; i < observations_.size(); ++i) {
-        ObservedData& obs = observations_[i];
+        Observation& obs = observations_[i];
 
         int well_idx = findWell(obs.GetLocation());
         int tracer_idx = findTracer(obs.GetQuantity());
@@ -788,7 +781,7 @@ double CGWA::calculateObservationLikelihood(size_t obs_index) const
         return 0.0;
     }
 
-    const ObservedData& obs = observations_[obs_index];
+    const Observation& obs = observations_[obs_index];
 
     double std_dev = obs.GetErrorStdDev();
     if (std_dev <= 0.0) {
@@ -802,38 +795,38 @@ double CGWA::calculateObservationLikelihood(size_t obs_index) const
 
     // Data ratio for normalization
     double data_ratio = 1.0;
-    if (obs.count_max) {
+    if (obs.GetCountMax()) {
         data_ratio = 1.0 / static_cast<double>(observed.size());
     }
 
     double log_p = 0.0;
 
-    if (obs.has_detection_limit) {
+    if (obs.HasDetectionLimit()) {
         // Handle detection limit
-        TimeSeries<double> obs_clamped = max(observed, obs.detection_limit_value);
-        TimeSeries<double> mod_clamped = max(modeled, obs.detection_limit_value);
+        TimeSeries<double> obs_clamped = max(observed, obs.GetDetectionLimitValue());
+        TimeSeries<double> mod_clamped = max(modeled, obs.GetDetectionLimitValue());
 
-        if (obs.error_structure == 0) {
+        if (obs.GetErrorStructure() == "normal") {
             // Normal error structure
             log_p = -norm2(obs_clamped > mod_clamped) / (2.0 * variance) -
                     std::log(std_dev) * modeled.size();
         }
-        else if (obs.error_structure == 1) {
+        else if (obs.GetErrorStructure() == "log-normal") {
             // Log-normal error structure
-            TimeSeries<double> obs_log = obs_clamped.log(obs.detection_limit_value);
-            TimeSeries<double> mod_log = mod_clamped.log(obs.detection_limit_value);
+            TimeSeries<double> obs_log = obs_clamped.log(obs.GetDetectionLimitValue());
+            TimeSeries<double> mod_log = mod_clamped.log(obs.GetDetectionLimitValue());
             log_p = -norm2(mod_log > obs_log) / (2.0 * variance) -
                     std::log(std_dev) * modeled.size();
         }
     }
     else {
         // No detection limit
-        if (obs.error_structure == 0) {
+        if (obs.GetErrorStructure() == "normal") {
             // Normal error structure
             log_p = data_ratio * (-norm2(modeled > observed) / (2.0 * variance) -
                                   std::log(std_dev) * modeled.size());
         }
-        else if (obs.error_structure == 1) {
+        else if (obs.GetErrorStructure() == "log-normal") {
             // Log-normal error structure
             TimeSeries<double> obs_log = observed.log(1e-8);
             TimeSeries<double> mod_log = modeled.log(1e-8);
@@ -899,7 +892,7 @@ std::string CGWA::parametersToString() const
     // Observations
     oss << "\nObservations (" << observations_.size() << "):\n";
     for (size_t i = 0; i < observations_.size(); ++i) {
-        const ObservedData& obs = observations_[i];
+        const Observation& obs = observations_[i];
         oss << "  " << obs.GetName() << ": "
             << "location=" << obs.GetLocation() << ", "
             << "quantity=" << obs.GetQuantity() << ", "
@@ -1133,15 +1126,8 @@ bool CGWA::exportToFile(const std::string& filename) const
         file << "well=" << obs.GetLocation();
         file << "; tracer=" << obs.GetQuantity();
         file << "; std_param=" << obs.GetStdParameterName();
+        file << "; error_structure=" << obs.GetErrorStructure();
 
-        // Issue 2: Fixed - Write error_structure as string instead of number
-        if (obs.error_structure == 0) {
-            file << "; error_structure=normal";
-        } else if (obs.error_structure == 1) {
-            file << "; error_structure=log-normal";
-        } else {
-            file << "; error_structure=" << obs.error_structure;
-        }
 
         // Get filename from observed data TimeSeries
         const TimeSeries<double>& observed_data = obs.GetObservedData();
@@ -1158,11 +1144,11 @@ bool CGWA::exportToFile(const std::string& filename) const
             file << "; observed_data=" << data_file;
         }
 
-        if (obs.has_detection_limit) {
-            file << "; detect_limit_value=" << obs.detection_limit_value;
+        if (obs.HasDetectionLimit()) {
+            file << "; detect_limit_value=" << obs.GetDetectionLimitValue();
         }
 
-        if (obs.count_max) {
+        if (obs.GetCountMax()) {
             file << "; count_max=1";
         }
 

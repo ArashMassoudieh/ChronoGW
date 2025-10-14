@@ -3,6 +3,9 @@
 #include "GWA.h"
 #include <iostream>
 #include <fstream>
+#include "GA.h"
+#include "MCMC.h"
+#include "levenbergmarquardt.h"
 
 void example_tracer_output()
 {
@@ -102,7 +105,9 @@ int main()
     try {
         CGWA system("../../Single_well.txt");
         system.exportToFile("output/Inputfile.txt");
-
+        CGA<CGWA> ga(&system);
+        CMCMC<CGWA> mcmc(&system);
+        LevenbergMarquardt<CGWA> lm(&system);
 
         return 0;
     }

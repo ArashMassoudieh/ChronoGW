@@ -17,6 +17,7 @@ SOURCES += \
     InverseModeling/observation.cpp \
     InverseModeling/parameter.cpp \
     InverseModeling/parameter_set.cpp \
+    InverseModeling/src/GA/Binary.cpp \
     InverseModeling/src/GA/DistributionNUnif.cpp \
     InverseModeling/src/GA/GADistribution.cpp \
     InverseModeling/src/GA/Individual.cpp \
@@ -25,6 +26,7 @@ SOURCES += \
     Utilities/Distribution.cpp \
     Utilities/Matrix.cpp \
     Utilities/Matrix_arma.cpp \
+    Utilities/NormalDist.cpp \
     Utilities/QuickSort.cpp \
     Utilities/Utilities.cpp \
     Utilities/Vector.cpp \
@@ -41,6 +43,10 @@ HEADERS += \
     InverseModeling/include/GA/GA.h \
     InverseModeling/include/GA/GA.hpp \
     InverseModeling/include/GA/Individual.h \
+    InverseModeling/include/MCMC/MCMC.h \
+    InverseModeling/include/MCMC/MCMC.hpp \
+    InverseModeling/levenbergmarquardt.h \
+    InverseModeling/levenbergmarquardt.hpp \
     InverseModeling/observation.h \
     InverseModeling/parameter.h \
     InverseModeling/parameter_set.h \
@@ -48,6 +54,7 @@ HEADERS += \
     Utilities/Distribution.h \
     Utilities/Matrix.h \
     Utilities/Matrix_arma.h \
+    Utilities/NormalDist.h \
     Utilities/QuickSort.h \
     Utilities/TimeSeries.h \
     Utilities/TimeSeries.hpp \

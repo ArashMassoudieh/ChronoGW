@@ -12,29 +12,6 @@
 #include "observation.h"
 
 
-/**
- * @brief Observed data characteristics for inverse modeling
- */
-/**
- * @brief Extended observation data for groundwater age modeling
- *
- * Extends base Observation class with groundwater-specific properties
- * like detection limits and error structures
- */
-struct ObservedData : public Observation
-{
-    int error_structure;                 ///< 0=normal, 1=lognormal
-
-    bool has_detection_limit;            ///< Whether detection limit applies
-    double detection_limit_value;        ///< Detection limit value
-
-    int max_data_count;                  ///< Max data points among all observables at same well
-    bool count_max;                      ///< Whether to normalize by max count
-
-    ObservedData()
-        : error_structure(0), has_detection_limit(false)
-        , detection_limit_value(0.0), max_data_count(1), count_max(false) {}
-};
 
 /**
  * @brief Model configuration and settings
@@ -116,6 +93,18 @@ public:
     const std::vector<double> getParameterValues() const;
 
     /**
+     * @brief Get reference to parameter set
+     * @return Reference to Parameter_Set
+     */
+    Parameter_Set& Parameters() { return parameters_; }
+
+    /**
+     * @brief Get const reference to parameter set
+     * @return Const reference to Parameter_Set
+     */
+    const Parameter_Set& Parameters() const { return parameters_; }
+
+    /**
      * @brief Set parameter value by index
      * @param index Parameter index
      * @param value New value
@@ -141,10 +130,27 @@ public:
     size_t getTracerCount() const { return tracers_.size(); }
     size_t getWellCount() const { return wells_.size(); }
     size_t getObservationCount() const { return observations_.size(); }
+    size_t ObservationsCount() const { return observations_.size(); }
 
     const CTracer& getTracer(size_t index) const { return tracers_[index]; }
     const CWell& getWell(size_t index) const { return wells_[index]; }
-    const ObservedData& getObservation(size_t index) const { return observations_[index]; }
+    const Observation& getObservation(size_t index) const { return observations_[index]; }
+
+    /**
+     * @brief Get pointer to observations vector as base Observation type
+     * @return Pointer to vector of Observation
+     */
+    std::vector<Observation>* Observations() {
+        return reinterpret_cast<std::vector<Observation>*>(&observations_);
+    }
+
+    /**
+     * @brief Get const pointer to observations vector as base Observation type
+     * @return Const pointer to vector of Observation
+     */
+    const std::vector<Observation>* Observations() const {
+        return reinterpret_cast<const std::vector<Observation>*>(&observations_);
+    }
 
     CTracer& getTracerMutable(size_t index) { return tracers_[index]; }
     CWell& getWellMutable(size_t index) { return wells_[index]; }
@@ -233,6 +239,30 @@ public:
      */
     bool exportToFile(const std::string& filename) const;
 
+    /**
+     * @brief Get input path
+     * @return Input file directory path
+     */
+    std::string InputPath() const { return settings_.input_path; }
+
+    /**
+     * @brief Set input path
+     * @param path Input file directory path
+     */
+    void SetInputPath(const std::string& path) { settings_.input_path = path; }
+
+    /**
+     * @brief Get output path
+     * @return Output file directory path
+     */
+    std::string OutputPath() const { return settings_.output_path; }
+
+    /**
+     * @brief Set output path
+     * @param path Output file directory path
+     */
+    void SetOutputPath(const std::string& path) { settings_.output_path = path; }
+
 private:
     // ========================================================================
     // Private Configuration Loading Methods
@@ -309,7 +339,7 @@ private:
     // Model components
     std::vector<CTracer> tracers_;
     std::vector<CWell> wells_;
-    std::vector<ObservedData> observations_;
+    std::vector<Observation> observations_;
 
     // Parameters for inverse modeling
     Parameter_Set parameters_;
