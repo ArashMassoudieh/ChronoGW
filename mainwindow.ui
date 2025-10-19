@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionOpen"/>
+    <addaction name="actionSave"/>
+    <addaction name="actionSave_As"/>
+   </widget>
+   <widget class="QMenu" name="menuData">
+    <property name="title">
+     <string>Data</string>
+    </property>
+    <addaction name="actionWells"/>
+    <addaction name="actionTracers"/>
+    <addaction name="actionParameters"/>
+    <addaction name="actionObservations"/>
+   </widget>
+   <widget class="QMenu" name="menuParameter_Estimation">
+    <property name="title">
+     <string>Parameter Estimation</string>
+    </property>
+    <addaction name="actionDeterministic_GA"/>
+    <addaction name="actionBayesian_MCMC"/>
+    <addaction name="actionDeterministinc_LM"/>
+   </widget>
+   <widget class="QMenu" name="menuAbout">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionAbout"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuData"/>
+   <addaction name="menuParameter_Estimation"/>
+   <addaction name="menuAbout"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionOpen">
+   <property name="text">
+    <string>Open</string>
+   </property>
+  </action>
+  <action name="actionSave">
+   <property name="text">
+    <string>Save</string>
+   </property>
+  </action>
+  <action name="actionWells">
+   <property name="text">
+    <string>Wells</string>
+   </property>
+  </action>
+  <action name="actionTracers">
+   <property name="text">
+    <string>Tracers</string>
+   </property>
+  </action>
+  <action name="actionParameters">
+   <property name="text">
+    <string>Parameters</string>
+   </property>
+  </action>
+  <action name="actionObservations">
+   <property name="text">
+    <string>Observations</string>
+   </property>
+  </action>
+  <action name="actionDeterministic_GA">
+   <property name="text">
+    <string>Deterministic (GA)</string>
+   </property>
+  </action>
+  <action name="actionBayesian_MCMC">
+   <property name="text">
+    <string>Bayesian (MCMC)</string>
+   </property>
+  </action>
+  <action name="actionDeterministinc_LM">
+   <property name="text">
+    <string>Deterministinc (LM)</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+  <action name="actionSave_As">
+   <property name="text">
+    <string>Save As</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

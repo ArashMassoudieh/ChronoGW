@@ -1,7 +1,7 @@
 path=/home/arash/Projects/ChronoGW/Inputs/
 outpath=/home/arash/Projects/ChronoGW/Outputs/
 
-well=8, {f=p[fraction_old_well8];param[0]=p[young_mean_age_well8];param[1]=p[young_p2_well8];distribution=igaussian; age_old=p[age_old_well8];fm=p[fm_well8]}
+well=Well 8, {distribution=igaussian}
 
 tracer=3H, {decay=0.0562619460;input=3H.txt}
 tracer=3He, {source=3H}

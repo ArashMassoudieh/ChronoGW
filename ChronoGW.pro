@@ -74,3 +74,5 @@ linux {
      LIBS += -larmadillo -llapack -lblas -lgsl -lopenblas
 
 }
+
+FORMS +=

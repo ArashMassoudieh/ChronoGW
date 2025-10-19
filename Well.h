@@ -243,6 +243,76 @@ public:
         int num_intervals,
         double multiplier);
 
+    /**
+ * @brief Get a specific distribution parameter by index
+ * @param index Parameter index
+ * @return Parameter value, or 0.0 if index out of range
+ */
+    double getParameter(size_t index) const {
+        if (index < parameters_.size()) {
+            return parameters_[index];
+        }
+        return 0.0;
+    }
+
+    /**
+ * @brief Set a specific distribution parameter by index
+ * @param index Parameter index
+ * @param value New parameter value
+ */
+    void setParameter(size_t index, double value) {
+        if (index < parameters_.size()) {
+            parameters_[index] = value;
+        } else if (index == parameters_.size()) {
+            parameters_.push_back(value);
+        }
+    }
+
+    /**
+ * @brief Get number of distribution parameters
+ */
+    size_t getParameterCount() const {
+        return parameters_.size();
+    }
+
+    /**
+ * @brief Get list of available distribution types
+ * @return Vector of distribution type names
+ */
+    static std::vector<std::string> getAvailableDistributionTypes() {
+        return {
+            "Exponential",
+            "Exponential-Piston Flow",
+            "Dispersion",
+            "Linear",
+            "Histogram",
+            "Gamma"
+        };
+    }
+
+    /**
+ * @brief Get expected number of parameters for a distribution type
+ * @param type Distribution type name
+ * @return Number of parameters needed
+ */
+    static int getExpectedParameterCount(const std::string& type) {
+        std::string lower_type = type;
+        std::transform(lower_type.begin(), lower_type.end(), lower_type.begin(), ::tolower);
+
+        if (lower_type.find("exponential") != std::string::npos &&
+            lower_type.find("piston") == std::string::npos) {
+            return 1;  // Mean residence time
+        } else if (lower_type.find("dispersion") != std::string::npos) {
+            return 2;  // Mean time, dispersion parameter
+        } else if (lower_type.find("piston") != std::string::npos) {
+            return 2;  // Exponential ratio, piston flow time
+        } else if (lower_type.find("gamma") != std::string::npos) {
+            return 2;  // Alpha, beta
+        } else if (lower_type.find("linear") != std::string::npos) {
+            return 1;  // Max age
+        }
+        return 0;
+    }
 
 
 private:
