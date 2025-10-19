@@ -78,6 +78,8 @@ SOURCES += \
     Utilities/Vector.cpp \
     Utilities/Vector_arma.cpp \
     Well.cpp \
+    chartviewer.cpp \
+    chartwindow.cpp \
     main_gui.cpp \
     parameterorvaluewidget.cpp \
     welldialog.cpp
@@ -116,6 +118,8 @@ HEADERS += \
     Utilities/Vector.h \
     Utilities/Vector_arma.h \
     Well.h \
+    chartviewer.h \
+    chartwindow.h \
     parameterorvaluewidget.h \
     welldialog.h
 
