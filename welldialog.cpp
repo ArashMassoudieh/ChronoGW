@@ -1,29 +1,39 @@
 #include "welldialog.h"
-#include "parameterorvaluewidget.h"
-#include <QLabel>
-#include <QPushButton>
-#include <QMessageBox>
+#include "parametervaluewidget.h"
+#include "GWA.h"
+#include "Well.h"
+#include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QFormLayout>
+#include <QDialogButtonBox>
+#include <QGroupBox>
+#include <QLabel>
+#include <QMessageBox>
 
-
-WellDialog::WellDialog(CWell* well, CGWA* gwa, QWidget *parent)
+WellDialog::WellDialog(CGWA* gwa, CWell* well, QWidget* parent)
     : QDialog(parent)
-    , well_(well)
     , gwa_(gwa)
+    , well_(well)
 {
-    // Common distribution types
-    distributionTypes << "Exponential"
-                      << "Exponential-Piston Flow"
-                      << "Dispersion"
-                      << "Linear"
-                      << "Histogram"
-                      << "Gamma";
+    // Set window title based on whether editing or creating
+    if (well_) {
+        setWindowTitle(tr("Edit Well"));
+    } else {
+        setWindowTitle(tr("New Well"));
+    }
+
+    // Distribution types
+    distributionTypes << "Piston" << "Exponential" << "Gamma"
+                      << "Lognormal" << "InverseGaussian" << "Histogram";
 
     setupUI();
-    loadWellData();
 
-    setWindowTitle(tr("Well Properties"));
-    resize(500, 600);
+    // Load data if editing existing well
+    if (well_) {
+        loadWellData(well_);
+    } else {
+        updateParameterWidgets();
+    }
 }
 
 void WellDialog::setupUI()
@@ -49,36 +59,37 @@ void WellDialog::setupUI()
     // Distribution Parameters Group
     distributionParamsGroup = new QGroupBox(tr("Distribution Parameters"), this);
     distributionParamsLayout = new QFormLayout(distributionParamsGroup);
+
+    // Add info label at the top
+    distributionInfoLabel = new QLabel();
+    distributionInfoLabel->setWordWrap(true);
+    distributionInfoLabel->setStyleSheet("QLabel { color: #666; font-style: italic; padding: 5px; }");
+    distributionParamsLayout->addRow(distributionInfoLabel);
+
     mainLayout->addWidget(distributionParamsGroup);
 
     // Mixing Parameters Group
     QGroupBox* mixingGroup = new QGroupBox(tr("Mixing Parameters"), this);
     QFormLayout* mixingLayout = new QFormLayout(mixingGroup);
 
-    fractionOldWidget = new ParameterOrValueWidget(gwa_, tr("Fraction Old"), this);
-    fractionOldWidget->valueSpin->setRange(0.0, 1.0);
-    fractionOldWidget->valueSpin->setSingleStep(0.01);
-    fractionOldWidget->valueSpin->setToolTip(tr("Fraction of old water (0-1)"));
+    fractionOldWidget = new ParameterValueWidget(this);
+    fractionOldWidget->setPlaceholderText("0.0 - 1.0");
+    fractionOldWidget->setToolTip(tr("Fraction of old water (0-1)"));
     mixingLayout->addRow(tr("Fraction Old (f):"), fractionOldWidget);
 
-    ageOldWidget = new ParameterOrValueWidget(gwa_, tr("Age Old"), this);
-    ageOldWidget->valueSpin->setRange(0.0, 10000.0);
-    ageOldWidget->valueSpin->setSingleStep(1.0);
-    ageOldWidget->valueSpin->setSuffix(tr(" years"));
-    ageOldWidget->valueSpin->setToolTip(tr("Age of old water component"));
+    ageOldWidget = new ParameterValueWidget(this);
+    ageOldWidget->setPlaceholderText("Age in years");
+    ageOldWidget->setToolTip(tr("Age of old water component"));
     mixingLayout->addRow(tr("Age Old:"), ageOldWidget);
 
-    fractionMineralWidget = new ParameterOrValueWidget(gwa_, tr("Fraction Mineral"), this);
-    fractionMineralWidget->valueSpin->setRange(0.0, 2.0);
-    fractionMineralWidget->valueSpin->setSingleStep(0.01);
-    fractionMineralWidget->valueSpin->setToolTip(tr("Fraction mineral (fm) for mineral correction"));
+    fractionMineralWidget = new ParameterValueWidget(this);
+    fractionMineralWidget->setPlaceholderText("0.0 - 1.0");
+    fractionMineralWidget->setToolTip(tr("Fraction mineral (fm) for mineral correction"));
     mixingLayout->addRow(tr("Fraction Mineral (fm):"), fractionMineralWidget);
 
-    vzDelayWidget = new ParameterOrValueWidget(gwa_, tr("Vadose Zone Delay"), this);
-    vzDelayWidget->valueSpin->setRange(0.0, 100.0);
-    vzDelayWidget->valueSpin->setSingleStep(0.1);
-    vzDelayWidget->valueSpin->setSuffix(tr(" years"));
-    vzDelayWidget->valueSpin->setToolTip(tr("Vadose zone delay time"));
+    vzDelayWidget = new ParameterValueWidget(this);
+    vzDelayWidget->setPlaceholderText("Delay in years");
+    vzDelayWidget->setToolTip(tr("Vadose zone delay time"));
     mixingLayout->addRow(tr("Vadose Zone Delay:"), vzDelayWidget);
 
     mainLayout->addWidget(mixingGroup);
@@ -92,145 +103,159 @@ void WellDialog::setupUI()
     mainLayout->addWidget(buttonBox);
 }
 
-void WellDialog::loadWellData()
+
+void WellDialog::loadWellData(const CWell* well)
 {
-    if (!well_ || !gwa_) return;
+    if (!well) return;
 
-    // Load basic properties
-    nameEdit->setText(QString::fromStdString(well_->getName()));
+    std::string wellName = well->getName();
 
-    QString distType = QString::fromStdString(well_->getDistributionType());
-    int index = distributionTypeCombo->findText(distType);
+    // Set name
+    nameEdit->setText(QString::fromStdString(wellName));
+
+    // Set distribution type
+    QString distType = QString::fromStdString(well->getDistributionType());
+    int index = distributionTypeCombo->findText(distType, Qt::MatchFixedString);
     if (index >= 0) {
         distributionTypeCombo->setCurrentIndex(index);
     } else {
         distributionTypeCombo->setCurrentText(distType);
     }
 
-    // Load mixing parameters - check if they're linked to parameters
-    std::string wellName = well_->getName();
+    // Update parameter widgets first
+    updateParameterWidgets();
 
-    // Check fraction old (f)
-    QString linkedParam = findLinkedParameter(wellName, "f");
-    if (!linkedParam.isEmpty()) {
-        fractionOldWidget->setParameter(linkedParam);
-    } else {
-        fractionOldWidget->setValue(well_->getFractionOld());
+    // Set distribution parameters with parameter linkage check
+    const std::vector<double>& params = well->getParameters();
+    for (int i = 0; i < distributionParamWidgets.size(); ++i) {
+        QString paramName = QString("param[%1]").arg(i);
+        QString linkedParam = findLinkedParameter(wellName, paramName.toStdString());
+
+        if (!linkedParam.isEmpty()) {
+            // This property is linked to a parameter
+            distributionParamWidgets[i]->setParameter(linkedParam);
+        } else if (i < static_cast<int>(params.size())) {
+            // Use direct value
+            distributionParamWidgets[i]->setValue(params[i]);
+        }
     }
 
-    // Check age old
-    linkedParam = findLinkedParameter(wellName, "age_old");
-    if (!linkedParam.isEmpty()) {
-        ageOldWidget->setParameter(linkedParam);
+    // Set mixing parameters with parameter linkage check
+    QString linkedF = findLinkedParameter(wellName, "f");
+    if (!linkedF.isEmpty()) {
+        fractionOldWidget->setParameter(linkedF);
     } else {
-        ageOldWidget->setValue(well_->getAgeOld());
+        fractionOldWidget->setValue(well->getFractionOld());
     }
 
-    // Check fraction mineral (fm)
-    linkedParam = findLinkedParameter(wellName, "fm");
-    if (!linkedParam.isEmpty()) {
-        fractionMineralWidget->setParameter(linkedParam);
+    QString linkedAgeOld = findLinkedParameter(wellName, "age_old");
+    if (!linkedAgeOld.isEmpty()) {
+        ageOldWidget->setParameter(linkedAgeOld);
     } else {
-        fractionMineralWidget->setValue(well_->getFractionMineral());
+        ageOldWidget->setValue(well->getAgeOld());
     }
 
-    // Check vadose zone delay
-    linkedParam = findLinkedParameter(wellName, "vz_delay");
-    if (!linkedParam.isEmpty()) {
-        vzDelayWidget->setParameter(linkedParam);
+    QString linkedFm = findLinkedParameter(wellName, "fm");
+    if (!linkedFm.isEmpty()) {
+        fractionMineralWidget->setParameter(linkedFm);
     } else {
-        vzDelayWidget->setValue(well_->getVzDelay());
+        fractionMineralWidget->setValue(well->getFractionMineral());
     }
 
-    // Load distribution parameters
-    createDistributionParameterInputs();
+    QString linkedVzDelay = findLinkedParameter(wellName, "vz_delay");
+    if (!linkedVzDelay.isEmpty()) {
+        vzDelayWidget->setParameter(linkedVzDelay);
+    } else {
+        vzDelayWidget->setValue(well->getVzDelay());
+    }
+}
+
+void WellDialog::updateParameterWidgets()
+{
+    if (!gwa_) return;
+
+    // Get parameter names from GWA
+    QVector<QString> paramNames;
+    for (size_t i = 0; i < gwa_->getParameterCount(); ++i) {
+        const Parameter* param = gwa_->getParameter(i);
+        if (param) {
+            paramNames.append(QString::fromStdString(param->GetName()));
+        }
+    }
+
+    // Update all parameter widgets
+    for (ParameterValueWidget* widget : distributionParamWidgets) {
+        widget->setAvailableParameters(paramNames);
+    }
+
+    fractionOldWidget->setAvailableParameters(paramNames);
+    ageOldWidget->setAvailableParameters(paramNames);
+    fractionMineralWidget->setAvailableParameters(paramNames);
+    vzDelayWidget->setAvailableParameters(paramNames);
+}
+
+void WellDialog::createDistributionParamWidgets(int count)
+{
+    // Clear existing parameter widgets (but keep the info label)
+    // Remove rows from bottom up, starting after the info label (row 0)
+    while (distributionParamsLayout->rowCount() > 1) {
+        distributionParamsLayout->removeRow(1);
+    }
+    distributionParamWidgets.clear();
+
+    // Create new widgets
+    for (int i = 0; i < count; ++i) {
+        ParameterValueWidget* widget = new ParameterValueWidget(this);
+        widget->setPlaceholderText("Enter value");
+        distributionParamWidgets.append(widget);
+
+        QString label = tr("Parameter %1:").arg(i + 1);
+        distributionParamsLayout->addRow(label, widget);
+    }
+
+    // Update parameter lists
+    updateParameterWidgets();
 }
 
 void WellDialog::onDistributionTypeChanged(const QString& type)
 {
-    createDistributionParameterInputs();
-}
-
-void WellDialog::createDistributionParameterInputs()
-{
-    // Clear existing parameter inputs
-    while (distributionParamsLayout->count() > 0) {
-        QLayoutItem* item = distributionParamsLayout->takeAt(0);
-        if (item->widget()) {
-            delete item->widget();
-        }
-        delete item;
-    }
-    distributionParamWidgets.clear();
-
-    if (!well_) return;
-
-    // Get current parameters from well
-    const std::vector<double>& params = well_->getParameters();
-
-    // Determine number of parameters based on distribution type
-    QString distType = distributionTypeCombo->currentText();
+    // Determine parameter count for this distribution
+    QString lowerType = type.toLower();
     int paramCount = 0;
+    QString infoText;
 
-    if (distType.contains("Exponential", Qt::CaseInsensitive) &&
-        !distType.contains("Piston", Qt::CaseInsensitive)) {
+    if (lowerType == "piston" || lowerType == "dirac") {
         paramCount = 1;
-    } else if (distType.contains("Dispersion", Qt::CaseInsensitive)) {
-        paramCount = 2;
-    } else if (distType.contains("Piston", Qt::CaseInsensitive)) {
-        paramCount = 2;
-    } else if (distType.contains("Gamma", Qt::CaseInsensitive)) {
-        paramCount = 2;
-    } else if (distType.contains("Linear", Qt::CaseInsensitive)) {
+        infoText = tr("Parameter 1: Mean age");
+    } else if (lowerType == "exponential" || lowerType == "exp") {
         paramCount = 1;
+        infoText = tr("Parameter 1: Mean residence time (1/λ)");
+    } else if (lowerType == "gamma") {
+        paramCount = 2;
+        infoText = tr("Parameter 1: Shape (k), Parameter 2: Scale (θ)");
+    } else if (lowerType == "lognormal") {
+        paramCount = 2;
+        infoText = tr("Parameter 1: Mean (μ), Parameter 2: Standard deviation (σ)");
+    } else if (lowerType == "inversegaussian" || lowerType == "igaussian") {
+        paramCount = 2;
+        infoText = tr("Parameter 1: Mean (μ), Parameter 2: Shape (λ)");
+    } else if (lowerType == "histogram" || lowerType == "hist") {
+        paramCount = 10;
+        infoText = tr("Parameters define the probability for each time bin");
     } else {
-        paramCount = params.size();
+        paramCount = 2;
+        infoText = tr("Distribution-specific parameters");
     }
 
-    // Create parameter/value widgets
-    for (int i = 0; i < paramCount; ++i) {
-        ParameterOrValueWidget* widget = new ParameterOrValueWidget(gwa_,
-                                                                    tr("Distribution Parameter %1").arg(i), this);
+    // Update info label
+    distributionInfoLabel->setText(infoText);
 
-        // Check if this parameter is linked to a parameter
-        QString linkedParam = findLinkedParameter(well_->getName(),
-                                                  QString("param[%1]").arg(i).toStdString());
-        if (!linkedParam.isEmpty()) {
-            widget->setParameter(linkedParam);
-        } else {
-            // Set value if available
-            if (i < static_cast<int>(params.size())) {
-                widget->setValue(params[i]);
-            }
-        }
-
-        distributionParamWidgets.append(widget);
-        distributionParamsLayout->addRow(tr("Parameter [%1]:").arg(i), widget);
-    }
-
-    // Add help text
-    QString helpText;
-    if (distType.contains("Exponential", Qt::CaseInsensitive) &&
-        !distType.contains("Piston", Qt::CaseInsensitive)) {
-        helpText = tr("Parameter [0]: Mean residence time (years)");
-    } else if (distType.contains("Dispersion", Qt::CaseInsensitive)) {
-        helpText = tr("Parameter [0]: Mean transit time\nParameter [1]: Dispersion parameter");
-    } else if (distType.contains("Piston", Qt::CaseInsensitive)) {
-        helpText = tr("Parameter [0]: Exponential fraction\nParameter [1]: Piston flow time");
-    } else if (distType.contains("Gamma", Qt::CaseInsensitive)) {
-        helpText = tr("Parameter [0]: Alpha (shape)\nParameter [1]: Beta (scale)");
-    }
-
-    if (!helpText.isEmpty()) {
-        QLabel* helpLabel = new QLabel(helpText, this);
-        helpLabel->setStyleSheet("QLabel { color: gray; font-size: 9pt; }");
-        helpLabel->setWordWrap(true);
-        distributionParamsLayout->addRow(helpLabel);
-    }
+    createDistributionParamWidgets(paramCount);
 }
 
 void WellDialog::onAccepted()
 {
+    // Validate name
     if (nameEdit->text().trimmed().isEmpty()) {
         QMessageBox::warning(this, tr("Invalid Input"),
                              tr("Well name cannot be empty."));
@@ -242,52 +267,60 @@ void WellDialog::onAccepted()
 
 CWell WellDialog::getWell() const
 {
-    CWell updatedWell;
+    CWell well;
 
-    // Set basic properties
-    updatedWell.setName(nameEdit->text().toStdString());
-    updatedWell.setDistributionType(distributionTypeCombo->currentText().toStdString());
+    // Set name
+    well.setName(nameEdit->text().toStdString());
 
-    // Set mixing parameters (get actual values, not parameter names)
-    updatedWell.setFractionOld(fractionOldWidget->getValue());
-    updatedWell.setAgeOld(ageOldWidget->getValue());
-    updatedWell.setFractionModern(fractionMineralWidget->getValue());
-    updatedWell.setVzDelay(vzDelayWidget->getValue());
+    // Set distribution type
+    well.setDistributionType(distributionTypeCombo->currentText().toStdString());
 
     // Set distribution parameters
     std::vector<double> params;
-    for (ParameterOrValueWidget* widget : distributionParamWidgets) {
-        params.push_back(widget->getValue());
-    }
-    updatedWell.setParameters(params);
-
-    return updatedWell;
-}
-
-QMap<QString, QString> WellDialog::getParameterLinkages() const
-{
-    QMap<QString, QString> linkages;
-
-    if (fractionOldWidget->isParameter()) {
-        linkages["f"] = fractionOldWidget->getParameter();
-    }
-    if (ageOldWidget->isParameter()) {
-        linkages["age_old"] = ageOldWidget->getParameter();
-    }
-    if (fractionMineralWidget->isParameter()) {
-        linkages["fm"] = fractionMineralWidget->getParameter();
-    }
-    if (vzDelayWidget->isParameter()) {
-        linkages["vz_delay"] = vzDelayWidget->getParameter();
-    }
-
-    for (int i = 0; i < distributionParamWidgets.size(); ++i) {
-        if (distributionParamWidgets[i]->isParameter()) {
-            linkages[QString("param[%1]").arg(i)] = distributionParamWidgets[i]->getParameter();
+    for (ParameterValueWidget* widget : distributionParamWidgets) {
+        if (widget->isParameterMode()) {
+            // For now, just use 0.0 as placeholder
+            // TODO: Implement parameter linkage properly
+            params.push_back(0.0);
+        } else {
+            params.push_back(widget->getValue());
         }
     }
 
-    return linkages;
+    for (size_t i = 0; i < params.size(); ++i) {
+        well.setParameter("param[" + std::to_string(i) + "]", params[i]);
+    }
+
+    // Set mixing parameters
+    if (fractionOldWidget->isParameterMode()) {
+        // TODO: Handle parameter linkage
+        well.setFractionOld(0.0);
+    } else {
+        well.setFractionOld(fractionOldWidget->getValue());
+    }
+
+    if (ageOldWidget->isParameterMode()) {
+        // TODO: Handle parameter linkage
+        well.setAgeOld(0.0);
+    } else {
+        well.setAgeOld(ageOldWidget->getValue());
+    }
+
+    if (fractionMineralWidget->isParameterMode()) {
+        // TODO: Handle parameter linkage
+        well.setFractionModern(0.0);
+    } else {
+        well.setFractionModern(fractionMineralWidget->getValue());
+    }
+
+    if (vzDelayWidget->isParameterMode()) {
+        // TODO: Handle parameter linkage
+        well.setVzDelay(0.0);
+    } else {
+        well.setVzDelay(vzDelayWidget->getValue());
+    }
+
+    return well;
 }
 
 QString WellDialog::findLinkedParameter(const std::string& wellName, const std::string& quantity)
@@ -318,4 +351,33 @@ QString WellDialog::findLinkedParameter(const std::string& wellName, const std::
     }
 
     return QString();  // No parameter found
+}
+
+QMap<QString, QString> WellDialog::getParameterLinkages() const
+{
+    QMap<QString, QString> linkages;
+
+    // Check mixing parameters
+    if (fractionOldWidget->isParameterMode()) {
+        linkages["f"] = fractionOldWidget->getParameter();
+    }
+    if (ageOldWidget->isParameterMode()) {
+        linkages["age_old"] = ageOldWidget->getParameter();
+    }
+    if (fractionMineralWidget->isParameterMode()) {
+        linkages["fm"] = fractionMineralWidget->getParameter();
+    }
+    if (vzDelayWidget->isParameterMode()) {
+        linkages["vz_delay"] = vzDelayWidget->getParameter();
+    }
+
+    // Check distribution parameters
+    for (int i = 0; i < distributionParamWidgets.size(); ++i) {
+        if (distributionParamWidgets[i]->isParameterMode()) {
+            QString key = QString("param[%1]").arg(i);
+            linkages[key] = distributionParamWidgets[i]->getParameter();
+        }
+    }
+
+    return linkages;
 }

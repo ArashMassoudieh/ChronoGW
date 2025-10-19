@@ -267,6 +267,58 @@ public:
      */
     void SetOutputPath(const std::string& path) { settings_.output_path = path; }
 
+
+    /**
+     * @brief Remove a specific parameter linkage for a well or tracer property
+     * @param locationName Name of the well or tracer
+     * @param quantity Property name (e.g., "f", "age_old", "param[0]")
+     * @param locationType "well" or "tracer"
+     * @return true if any linkage was removed
+     */
+    bool removeParameterLinkage(const std::string& locationName,
+                                const std::string& quantity,
+                                const std::string& locationType);
+
+    /**
+     * @brief Remove all parameter linkages for a specific well or tracer
+     * @param locationName Name of the well or tracer
+     * @param locationType "well" or "tracer"
+     * @return Number of linkages removed
+     */
+    int clearParameterLinkages(const std::string& locationName,
+                               const std::string& locationType);
+
+    /**
+     * @brief Update parameter linkages for a well
+     * @param wellName Name of the well
+     * @param linkages Map of quantity -> parameter name
+     *
+     * This method clears existing linkages for the specified quantities
+     * and creates new ones based on the provided map.
+     */
+    void updateWellParameterLinkages(const std::string& wellName,
+                                     const std::map<std::string, std::string>& linkages);
+
+    /**
+     * @brief Update parameter linkages for a tracer
+     * @param tracerName Name of the tracer
+     * @param linkages Map of quantity -> parameter name
+     */
+    void updateTracerParameterLinkages(const std::string& tracerName,
+                                       const std::map<std::string, std::string>& linkages);
+
+    /**
+     * @brief Find which parameter is linked to a specific location and quantity
+     * @param locationName Name of well or tracer
+     * @param quantity Property name
+     * @param locationType "well" or "tracer"
+     * @return Parameter name if found, empty string otherwise
+     */
+    std::string findLinkedParameter(const std::string& locationName,
+                                    const std::string& quantity,
+                                    const std::string& locationType) const;
+
+
 private:
     // ========================================================================
     // Private Configuration Loading Methods

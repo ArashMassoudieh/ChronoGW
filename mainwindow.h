@@ -22,6 +22,9 @@ private slots:
     void onSaveFile();
     void onSaveAsFile();
     void onEditWell(const QString& name, const QVariant& data);
+    void onWellRenamed(const QString& oldName, const QString& newName, const QVariant& data);
+    void onEditTracer(const QString& name, const QVariant& data);
+    void onTracerRenamed(const QString& oldName, const QString& newName, const QVariant& data);
 
 private:
     Ui::MainWindow *ui;

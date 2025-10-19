@@ -80,8 +80,11 @@ SOURCES += \
     Well.cpp \
     chartviewer.cpp \
     chartwindow.cpp \
+    constantortimeserieswidget.cpp \
     main_gui.cpp \
-    parameterorvaluewidget.cpp \
+    parametervaluewidget.cpp \
+    tracerdialog.cpp \
+    valueorparameterwidget.cpp \
     welldialog.cpp
 
 #-------------------------------------------------
@@ -120,7 +123,10 @@ HEADERS += \
     Well.h \
     chartviewer.h \
     chartwindow.h \
-    parameterorvaluewidget.h \
+    constantortimeserieswidget.h \
+    parametervaluewidget.h \
+    tracerdialog.h \
+    valueorparameterwidget.h \
     welldialog.h
 
 #-------------------------------------------------

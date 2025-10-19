@@ -319,10 +319,40 @@ void ChartViewer::updateAxesRanges()
         }
     }
 
-    // Add some padding
+    // Handle constant values (when min == max)
     double xRange = xMax - xMin;
     double yRange = yMax - yMin;
 
+    // If range is zero or very small, create a reasonable range around the value
+    if (xRange < 1e-10) {
+        double center = (xMax + xMin) / 2.0;
+        if (std::abs(center) < 1e-10) {
+            // Value is near zero
+            xMin = -1.0;
+            xMax = 1.0;
+        } else {
+            // Create range as percentage of the value
+            xMin = center * 0.9;
+            xMax = center * 1.1;
+        }
+        xRange = xMax - xMin;
+    }
+
+    if (yRange < 1e-10) {
+        double center = (yMax + yMin) / 2.0;
+        if (std::abs(center) < 1e-10) {
+            // Value is near zero
+            yMin = -1.0;
+            yMax = 1.0;
+        } else {
+            // Create range as percentage of the value
+            yMin = center * 0.9;
+            yMax = center * 1.1;
+        }
+        yRange = yMax - yMin;
+    }
+
+    // Add padding
     if (xAxisLog_) {
         xMin *= 0.9;
         xMax *= 1.1;

@@ -4,34 +4,41 @@
 #include <QDialog>
 #include <QLineEdit>
 #include <QComboBox>
-#include <QVBoxLayout>
-#include <QFormLayout>
-#include <QDialogButtonBox>
 #include <QGroupBox>
+#include <QFormLayout>
 #include <QVector>
-#include "Well.h"
-#include "GWA.h"
-#include "parameterorvaluewidget.h"
+#include <QString>
+#include <QLabel>
+
+class CGWA;
+class CWell;
+class ParameterValueWidget;
 
 /**
- * @brief Dialog for editing CWell properties
+ * @brief Dialog for editing well properties
  */
 class WellDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit WellDialog(CWell* well, CGWA* gwa, QWidget *parent = nullptr);
+    /**
+     * @brief Constructor
+     * @param gwa GWA model (for parameter list)
+     * @param well Well to edit (nullptr for new well)
+     * @param parent Parent widget
+     */
+    WellDialog(CGWA* gwa, CWell* well = nullptr, QWidget* parent = nullptr);
 
     /**
-     * @brief Get the modified well data
-     * @return CWell object with updated properties
+     * @brief Get the well with user modifications
+     * @return Modified well object
      */
     CWell getWell() const;
 
     /**
-     * @brief Get parameter linkages (which well properties are linked to which parameters)
-     * @return Map of property name to parameter name
+     * @brief Get parameter linkages for this well
+     * @return Map of property names to parameter names
      */
     QMap<QString, QString> getParameterLinkages() const;
 
@@ -41,37 +48,31 @@ private slots:
 
 private:
     void setupUI();
-    void loadWellData();
-    void createDistributionParameterInputs();
-
-    /**
-     * @brief Find which parameter (if any) is linked to a well property
-     * @param wellName Name of the well
-     * @param quantity Property name (e.g., "f", "age_old", "param[0]")
-     * @return Parameter name if linked, empty string otherwise
-     */
+    void loadWellData(const CWell* well);
+    void updateParameterWidgets();
+    void createDistributionParamWidgets(int count);
     QString findLinkedParameter(const std::string& wellName, const std::string& quantity);
 
-    CWell* well_;
+    // Model reference
     CGWA* gwa_;
-
-    // UI Elements - Basic Properties
-    QLineEdit* nameEdit;
-    QComboBox* distributionTypeCombo;
-
-    // UI Elements - Mixing Parameters (now with parameter selection)
-    ParameterOrValueWidget* fractionOldWidget;
-    ParameterOrValueWidget* ageOldWidget;
-    ParameterOrValueWidget* fractionMineralWidget;
-    ParameterOrValueWidget* vzDelayWidget;
-
-    // UI Elements - Distribution Parameters
-    QGroupBox* distributionParamsGroup;
-    QFormLayout* distributionParamsLayout;
-    QVector<ParameterOrValueWidget*> distributionParamWidgets;
+    CWell* well_;
 
     // Available distribution types
     QStringList distributionTypes;
+
+    // UI Widgets
+    QLineEdit* nameEdit;
+    QComboBox* distributionTypeCombo;
+    QGroupBox* distributionParamsGroup;
+    QFormLayout* distributionParamsLayout;
+    QVector<ParameterValueWidget*> distributionParamWidgets;
+
+    ParameterValueWidget* fractionOldWidget;
+    ParameterValueWidget* ageOldWidget;
+    ParameterValueWidget* fractionMineralWidget;
+    ParameterValueWidget* vzDelayWidget;
+
+    QLabel* distributionInfoLabel;
 };
 
 #endif // WELLDIALOG_H

@@ -1194,3 +1194,154 @@ bool CGWA::exportToFile(const std::string& filename) const
     file.close();
     return true;
 }
+
+bool CGWA::removeParameterLinkage(const std::string& locationName,
+                                  const std::string& quantity,
+                                  const std::string& locationType)
+{
+    bool removed = false;
+
+    // Normalize location type ("0" -> "well", "1" -> "tracer")
+    std::string normalizedType = locationType;
+    if (locationType == "0") normalizedType = "well";
+    if (locationType == "1") normalizedType = "tracer";
+
+    // Search through all parameters
+    for (size_t i = 0; i < parameters_.size(); ++i) {
+        Parameter* param = parameters_[i];
+        if (!param) continue;
+
+        // Try to remove with both the given type and normalized type
+        if (param->RemoveLocation(locationName, quantity, locationType)) {
+            removed = true;
+        }
+        if (locationType != normalizedType) {
+            if (param->RemoveLocation(locationName, quantity, normalizedType)) {
+                removed = true;
+            }
+        }
+    }
+
+    return removed;
+}
+
+int CGWA::clearParameterLinkages(const std::string& locationName,
+                                 const std::string& locationType)
+{
+    int totalRemoved = 0;
+
+    // Normalize location type
+    std::string normalizedType = locationType;
+    if (locationType == "0") normalizedType = "well";
+    if (locationType == "1") normalizedType = "tracer";
+
+    // Remove from all parameters
+    for (size_t i = 0; i < parameters_.size(); ++i) {
+        Parameter* param = parameters_[i];
+        if (!param) continue;
+
+        totalRemoved += param->RemoveAllLocations(locationName, locationType);
+        if (locationType != normalizedType) {
+            totalRemoved += param->RemoveAllLocations(locationName, normalizedType);
+        }
+    }
+
+    return totalRemoved;
+}
+
+void CGWA::updateWellParameterLinkages(const std::string& wellName,
+                                       const std::map<std::string, std::string>& linkages)
+{
+    // Define all possible well quantities that could have parameter linkages
+    std::vector<std::string> possibleQuantities = {
+        "f", "age_old", "fm", "vz_delay"
+    };
+
+    // Add distribution parameters (param[0] through param[9])
+    for (int i = 0; i < 10; ++i) {
+        possibleQuantities.push_back("param[" + std::to_string(i) + "]");
+    }
+
+    // Remove existing linkages for all possible quantities
+    for (const auto& quantity : possibleQuantities) {
+        removeParameterLinkage(wellName, quantity, "well");
+    }
+
+    // Add new linkages
+    for (const auto& pair : linkages) {
+        const std::string& quantity = pair.first;
+        const std::string& paramName = pair.second;
+
+        // Find the parameter
+        int paramIdx = findParameter(paramName);
+        if (paramIdx >= 0) {
+            Parameter* param = parameters_[paramIdx];
+            if (param) {
+                param->AddLocation(wellName, quantity, "well");
+            }
+        }
+    }
+}
+
+void CGWA::updateTracerParameterLinkages(const std::string& tracerName,
+                                         const std::map<std::string, std::string>& linkages)
+{
+    // Define all possible tracer quantities
+    std::vector<std::string> possibleQuantities = {
+        "decay_rate", "retardation", "c_old", "c_modern",
+        "fm_max", "input_multiplier"
+    };
+
+    // Remove existing linkages
+    for (const auto& quantity : possibleQuantities) {
+        removeParameterLinkage(tracerName, quantity, "tracer");
+    }
+
+    // Add new linkages
+    for (const auto& pair : linkages) {
+        const std::string& quantity = pair.first;
+        const std::string& paramName = pair.second;
+
+        int paramIdx = findParameter(paramName);
+        if (paramIdx >= 0) {
+            Parameter* param = parameters_[paramIdx];
+            if (param) {
+                param->AddLocation(tracerName, quantity, "tracer");
+            }
+        }
+    }
+}
+
+std::string CGWA::findLinkedParameter(const std::string& locationName,
+                                      const std::string& quantity,
+                                      const std::string& locationType) const
+{
+    // Normalize location type
+    std::string normalizedType = locationType;
+    if (locationType == "0") normalizedType = "well";
+    if (locationType == "1") normalizedType = "tracer";
+
+    // Search through all parameters
+    for (size_t i = 0; i < parameters_.size(); ++i) {
+        const Parameter* param = parameters_[i];
+        if (!param) continue;
+
+        const std::vector<std::string>& locations = param->GetLocations();
+        const std::vector<std::string>& quantities = param->GetQuantities();
+        const std::vector<std::string>& locationTypes = param->GetLocationTypes();
+
+        for (size_t j = 0; j < locations.size(); ++j) {
+            // Check both original and normalized type
+            bool typeMatch = (locationTypes[j] == locationType ||
+                              locationTypes[j] == normalizedType);
+
+            if (typeMatch &&
+                locations[j] == locationName &&
+                quantities[j] == quantity) {
+                return param->GetName();
+            }
+        }
+    }
+
+    return ""; // Not found
+}
