@@ -9,6 +9,8 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QMessageBox>
+#include <QPushButton>
+#include <chartwindow.h>
 
 WellDialog::WellDialog(CGWA* gwa, CWell* well, QWidget* parent)
     : QDialog(parent)
@@ -23,8 +25,8 @@ WellDialog::WellDialog(CGWA* gwa, CWell* well, QWidget* parent)
     }
 
     // Distribution types
-    distributionTypes << "Piston" << "Exponential" << "Gamma"
-                      << "Lognormal" << "InverseGaussian" << "Histogram";
+    distributionTypes << "Piston" << "Exponential" << "Gamma" << "Piston+Exponential"
+                      << "Log-normal" << "Inverse-Gaussian" << "Histogram" << "Shifted Exponential";
 
     setupUI();
 
@@ -32,10 +34,9 @@ WellDialog::WellDialog(CGWA* gwa, CWell* well, QWidget* parent)
     if (well_) {
         loadWellData(well_);
     } else {
-        updateParameterWidgets();
+        onDistributionTypeChanged(distributionTypeCombo->currentText());
     }
 }
-
 void WellDialog::setupUI()
 {
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
@@ -66,7 +67,21 @@ void WellDialog::setupUI()
     distributionInfoLabel->setStyleSheet("QLabel { color: #666; font-style: italic; padding: 5px; }");
     distributionParamsLayout->addRow(distributionInfoLabel);
 
+    // Parameter widgets will be added here dynamically
+
     mainLayout->addWidget(distributionParamsGroup);
+
+    // Add plot button AFTER the distribution group (in main layout, not form layout)
+    plotDistributionButton_ = new QPushButton("Plot Distribution", this);
+    plotDistributionButton_->setToolTip(tr("Preview age distribution with current parameters"));
+    connect(plotDistributionButton_, &QPushButton::clicked, this, &WellDialog::onPlotDistribution);
+
+    QHBoxLayout* plotButtonLayout = new QHBoxLayout();
+    plotButtonLayout->addStretch();
+    plotButtonLayout->addWidget(plotDistributionButton_);
+    plotButtonLayout->addStretch();
+
+    mainLayout->addLayout(plotButtonLayout);
 
     // Mixing Parameters Group
     QGroupBox* mixingGroup = new QGroupBox(tr("Mixing Parameters"), this);
@@ -103,7 +118,6 @@ void WellDialog::setupUI()
     mainLayout->addWidget(buttonBox);
 }
 
-
 void WellDialog::loadWellData(const CWell* well)
 {
     if (!well) return;
@@ -115,15 +129,18 @@ void WellDialog::loadWellData(const CWell* well)
 
     // Set distribution type
     QString distType = QString::fromStdString(well->getDistributionType());
+
+    // IMPORTANT: Always call onDistributionTypeChanged explicitly
+    // because setting the combo box might not trigger the signal
+    onDistributionTypeChanged(distType);
+
+    // Then set the combo box
     int index = distributionTypeCombo->findText(distType, Qt::MatchFixedString);
     if (index >= 0) {
         distributionTypeCombo->setCurrentIndex(index);
     } else {
         distributionTypeCombo->setCurrentText(distType);
     }
-
-    // Update parameter widgets first
-    updateParameterWidgets();
 
     // Set distribution parameters with parameter linkage check
     const std::vector<double>& params = well->getParameters();
@@ -132,10 +149,8 @@ void WellDialog::loadWellData(const CWell* well)
         QString linkedParam = findLinkedParameter(wellName, paramName.toStdString());
 
         if (!linkedParam.isEmpty()) {
-            // This property is linked to a parameter
             distributionParamWidgets[i]->setParameter(linkedParam);
         } else if (i < static_cast<int>(params.size())) {
-            // Use direct value
             distributionParamWidgets[i]->setValue(params[i]);
         }
     }
@@ -192,6 +207,7 @@ void WellDialog::updateParameterWidgets()
     ageOldWidget->setAvailableParameters(paramNames);
     fractionMineralWidget->setAvailableParameters(paramNames);
     vzDelayWidget->setAvailableParameters(paramNames);
+
 }
 
 void WellDialog::createDistributionParamWidgets(int count)
@@ -224,29 +240,31 @@ void WellDialog::onDistributionTypeChanged(const QString& type)
     int paramCount = 0;
     QString infoText;
 
-    if (lowerType == "piston" || lowerType == "dirac") {
+    if (lowerType == "piston") {
         paramCount = 1;
         infoText = tr("Parameter 1: Mean age");
-    } else if (lowerType == "exponential" || lowerType == "exp") {
+    } else if (lowerType == "exponential") {
         paramCount = 1;
         infoText = tr("Parameter 1: Mean residence time (1/λ)");
+    } else if (lowerType == "piston+exponential") {
+        paramCount = 2;
+        infoText = tr("Parameter 1: Exponential ratio, Parameter 2: Piston flow time");
     } else if (lowerType == "gamma") {
         paramCount = 2;
         infoText = tr("Parameter 1: Shape (k), Parameter 2: Scale (θ)");
-    } else if (lowerType == "lognormal") {
+    } else if (lowerType == "log-normal") {
         paramCount = 2;
         infoText = tr("Parameter 1: Mean (μ), Parameter 2: Standard deviation (σ)");
-    } else if (lowerType == "inversegaussian" || lowerType == "igaussian") {
+    } else if (lowerType == "inverse-gaussian") {
         paramCount = 2;
         infoText = tr("Parameter 1: Mean (μ), Parameter 2: Shape (λ)");
-    } else if (lowerType == "histogram" || lowerType == "hist") {
+    } else if (lowerType == "dispersion") {
+        paramCount = 2;
+        infoText = tr("Parameter 1: Mean time, Parameter 2: Dispersion parameter");
+    } else if (lowerType == "histogram") {
         paramCount = 10;
         infoText = tr("Parameters define the probability for each time bin");
-    } else {
-        paramCount = 2;
-        infoText = tr("Distribution-specific parameters");
     }
-
     // Update info label
     distributionInfoLabel->setText(infoText);
 
@@ -380,4 +398,84 @@ QMap<QString, QString> WellDialog::getParameterLinkages() const
     }
 
     return linkages;
+}
+
+void WellDialog::onPlotDistribution()
+{
+    // Get current parameters from widgets
+    std::vector<double> params;
+    for (ParameterValueWidget* widget : distributionParamWidgets) {
+        if (widget->isParameterMode()) {
+            // If linked to parameter, get its value
+            if (gwa_) {
+                int paramIdx = gwa_->findParameter(widget->getParameter().toStdString());
+                if (paramIdx >= 0) {
+                    const Parameter* param = gwa_->getParameter(paramIdx);
+                    if (param) {
+                        params.push_back(param->GetValue());
+                    } else {
+                        params.push_back(0.0);
+                    }
+                } else {
+                    params.push_back(0.0);
+                }
+            } else {
+                params.push_back(0.0);
+            }
+        } else {
+            params.push_back(widget->getValue());
+        }
+    }
+
+    // Get distribution type
+    QString distType = distributionTypeCombo->currentText();
+
+    // Create age distribution
+    double max_age = 100.0;  // You can make this configurable
+    int num_intervals = 1000;
+    double multiplier = 0.02;
+
+    TimeSeries<double> distribution;
+    std::string lowerType = distType.toLower().toStdString();
+
+    // Call appropriate distribution creation function
+    if (lowerType == "piston") {
+        distribution = CWell::createDiracDistribution(params, max_age, num_intervals, multiplier);
+    } else if (lowerType == "exponential") {
+        distribution = CWell::createExponentialDistribution(params, max_age, num_intervals, multiplier);
+    } else if (lowerType == "gamma") {
+        distribution = CWell::createGammaDistribution(params, max_age, num_intervals, multiplier);
+    } else if (lowerType == "log-normal") {
+        distribution = CWell::createLogNormalDistribution(params, max_age, num_intervals, multiplier);
+    } else if (lowerType == "inverse-gaussian") {
+        distribution = CWell::createInverseGaussianDistribution(params, max_age, num_intervals, multiplier);
+    } else if (lowerType == "piston+exponential") {
+        distribution = CWell::createShiftedExponentialDistribution(params, max_age, num_intervals, multiplier);
+    } else if (lowerType == "dispersion") {
+        distribution = CWell::createDispersionDistribution(params, max_age, num_intervals, multiplier);
+    } else if (lowerType == "histogram") {
+        // For histogram, need bin count and size
+        int bin_count = 10;  // Default
+        double bin_size = max_age / bin_count;
+        distribution = CWell::createHistogramDistribution(params, bin_count, bin_size,
+                                                          max_age, num_intervals, multiplier);
+    } else {
+        QMessageBox::warning(this, tr("Unknown Distribution"),
+                             tr("Cannot plot distribution type: %1").arg(distType));
+        return;
+    }
+
+    // Create TimeSeriesSet with the distribution
+    TimeSeriesSet<double> dataSet;
+
+    dataSet.append(distribution, "Age Distribution");
+
+    // Show in chart window
+    ChartWindow* chartWindow = ChartWindow::showChart(
+        dataSet,
+        QString("Age Distribution: %1").arg(distType),
+        this
+        );
+
+    chartWindow->setAxisLabels("Age (years)", "Probability Density");
 }

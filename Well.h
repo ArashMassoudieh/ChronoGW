@@ -281,8 +281,10 @@ public:
  */
     static std::vector<std::string> getAvailableDistributionTypes() {
         return {
+            "Piston",
             "Exponential",
             "Exponential-Piston Flow",
+            "Inverse-Gaussian"
             "Dispersion",
             "Linear",
             "Histogram",

@@ -45,6 +45,7 @@ public:
 private slots:
     void onDistributionTypeChanged(const QString& type);
     void onAccepted();
+    void onPlotDistribution();
 
 private:
     void setupUI();
@@ -52,6 +53,7 @@ private:
     void updateParameterWidgets();
     void createDistributionParamWidgets(int count);
     QString findLinkedParameter(const std::string& wellName, const std::string& quantity);
+
 
     // Model reference
     CGWA* gwa_;
@@ -66,6 +68,7 @@ private:
     QGroupBox* distributionParamsGroup;
     QFormLayout* distributionParamsLayout;
     QVector<ParameterValueWidget*> distributionParamWidgets;
+    QPushButton* plotDistributionButton_;
 
     ParameterValueWidget* fractionOldWidget;
     ParameterValueWidget* ageOldWidget;

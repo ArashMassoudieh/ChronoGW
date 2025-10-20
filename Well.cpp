@@ -70,13 +70,49 @@ CWell& CWell::operator=(const CWell& other)
 
 void CWell::setDistributionType(const std::string& type)
 {
+    // List of valid distribution types
+    static const std::vector<std::string> validTypes = {
+        "Piston",
+        "Exponential",
+        "Piston+Exponential",
+        "Gamma",
+        "Log-Normal",
+        "Inverse-Gaussian",
+        "Dispersion",
+        "Histogram"
+    };
+
+    // Check if the type is valid (case-insensitive)
+    bool isValid = false;
+    std::string lowerType = type;
+    std::transform(lowerType.begin(), lowerType.end(), lowerType.begin(), ::tolower);
+
+    for (const auto& validType : validTypes) {
+        std::string lowerValid = validType;
+        std::transform(lowerValid.begin(), lowerValid.end(), lowerValid.begin(), ::tolower);
+
+        if (lowerType == lowerValid) {
+            isValid = true;
+            break;
+        }
+    }
+
+    if (!isValid) {
+        std::cerr << "WARNING: Invalid distribution type '" << type << "' for well '"
+                  << name_ << "'. Valid types are: ";
+        for (size_t i = 0; i < validTypes.size(); ++i) {
+            std::cerr << validTypes[i];
+            if (i < validTypes.size() - 1) std::cerr << ", ";
+        }
+        std::cerr << std::endl;
+    }
+
     distribution_type_ = type;
 
     // Resize parameters vector for this distribution type
     int param_count = getParameterCount(type, histogram_bin_count_);
     if (param_count > 0) {
         parameters_.resize(param_count, 0.0);
-
     }
 }
 
@@ -132,18 +168,13 @@ int CWell::getParameterCount(const std::string& distribution_name, int n_bins)
 {
     std::string lower_name = aquiutils::tolower(distribution_name);
 
-    if (lower_name == "dirac" || lower_name == "piston") return 1;
+    if (lower_name == "piston") return 1;
     if (lower_name == "gamma") return 2;
-    if (lower_name == "igaussian") return 2;
-    if (lower_name == "igaussianm") return 4;
-    if (lower_name == "lognormal") return 2;
-    if (lower_name == "hist") return n_bins;
-    if (lower_name == "dispersion") return 2;
-    if (lower_name == "exp" || lower_name == "exponential") return 1;
-    if (lower_name == "shifted_exp") return 2;
-    if (lower_name == "levy") return 1;
-    if (lower_name == "shifted_levy") return 2;
-    if (lower_name == "generalized_igaussian") return 3;
+    if (lower_name == "inverse-gaussian") return 2;
+    if (lower_name == "log-normal") return 2;
+    if (lower_name == "histogram") return n_bins;
+    if (lower_name == "exponential" || lower_name == "exponential") return 1;
+    if (lower_name == "shifted exponential") return 2;
 
     return 0;
 }
@@ -156,41 +187,28 @@ void CWell::createDistribution(double oldest_time, int num_intervals, double mul
 {
     std::string lower_type = aquiutils::tolower(distribution_type_);
 
-    if (lower_type == "dirac" || lower_type == "piston") {
+    if (lower_type == "piston") {
         young_age_distribution_ = createDiracDistribution(parameters_, oldest_time, num_intervals, multiplier);
     }
     else if (lower_type == "gamma") {
         young_age_distribution_ = createGammaDistribution(parameters_, oldest_time, num_intervals, multiplier);
     }
-    else if (lower_type == "igaussian") {
+    else if (lower_type == "inverse-gaussian") {
         young_age_distribution_ = createInverseGaussianDistribution(parameters_, oldest_time, num_intervals, multiplier);
     }
-    else if (lower_type == "lognormal") {
+    else if (lower_type == "log-normal") {
         young_age_distribution_ = createLogNormalDistribution(parameters_, oldest_time, num_intervals, multiplier);
     }
-    else if (lower_type == "hist") {
+    else if (lower_type == "histogram") {
         young_age_distribution_ = createHistogramDistribution(parameters_, histogram_bin_count_,
                                                               histogram_bin_size_, oldest_time,
                                                               num_intervals, multiplier);
     }
-    else if (lower_type == "dispersion") {
-        young_age_distribution_ = createDispersionDistribution(parameters_, oldest_time, num_intervals, multiplier);
-    }
-    else if (lower_type == "exp" || lower_type == "exponential") {
+    else if (lower_type == "exponential") {
         young_age_distribution_ = createExponentialDistribution(parameters_, oldest_time, num_intervals, multiplier);
     }
-    else if (lower_type == "shifted_exp") {
+    else if (lower_type == "shifted exponential") {
         young_age_distribution_ = createShiftedExponentialDistribution(parameters_, oldest_time, num_intervals, multiplier);
-    }
-    else if (lower_type == "levy") {
-        young_age_distribution_ = createLevyDistribution(parameters_, oldest_time, num_intervals, multiplier);
-    }
-    else if (lower_type == "shifted_levy") {
-        young_age_distribution_ = createShiftedLevyDistribution(parameters_, oldest_time, num_intervals, multiplier);
-    }
-    else if (lower_type == "generalized_igaussian") {
-        young_age_distribution_ = createGeneralizedInverseGaussianDistribution(parameters_, oldest_time,
-                                                                               num_intervals, multiplier);
     }
 
 }
@@ -316,7 +334,7 @@ TimeSeries<double> CWell::createLogNormalDistribution(
 
     for (int i = 1; i < num_intervals + 1; ++i) {
         double t = age_dist.getTime(i);
-        double value = 1.0 / (t * std::log(params[1]) * std::sqrt(2.0 * pi)) *
+        double value = 1.0 / (t * params[1] * std::sqrt(2.0 * pi)) *
                        std::exp(-std::pow(std::log(t) - std::log(params[0]), 2) /
                                 (2.0 * std::pow(params[1], 2)));
         age_dist.setValue(i, value);

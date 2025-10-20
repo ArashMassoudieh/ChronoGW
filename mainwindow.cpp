@@ -10,6 +10,7 @@
 #include <QWidget>
 #include "welldialog.h"
 #include "tracerdialog.h"
+#include "parameterdialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -119,8 +120,8 @@ void MainWindow::setupCentralWidget()
 
     connect(parametersWidget, &IconListWidget::addItemRequested,
             this, &MainWindow::onAddParameter);
-    //connect(parametersWidget, &IconListWidget::itemPropertiesRequested,
-    //        this, &MainWindow::onEditParameter);
+    connect(parametersWidget, &IconListWidget::itemPropertiesRequested,
+            this, &MainWindow::onEditParameter);
     connect(parametersWidget, &IconListWidget::listModified,
             this, &MainWindow::onModelModified);
 
@@ -494,7 +495,7 @@ void MainWindow::onAddTracer()
 
 void MainWindow::onAddParameter()
 {
-    /* Create dialog for new parameter
+    // Create dialog for new parameter
     ParameterDialog dialog(&gwaModel, nullptr, this);
 
     if (dialog.exec() == QDialog::Accepted) {
@@ -510,8 +511,9 @@ void MainWindow::onAddParameter()
         // Mark as modified
         setModified(true);
     }
-    */
 }
+
+
 
 void MainWindow::onAddObservation()
 {
@@ -585,12 +587,6 @@ void MainWindow::onEditParameter(const QString& paramName, int index)
         return;
     }
 
-    // TODO: Implement ParameterDialog
-    QMessageBox::information(this, "Edit Parameter",
-                             QString("Edit parameter: %1 (index: %2)\n\nParameterDialog not yet implemented.")
-                                 .arg(paramName).arg(index));
-
-    /*
     // Get mutable reference to the parameter
     Parameter* param = gwaModel.getParameter(index);
     if (!param) return;
@@ -611,7 +607,6 @@ void MainWindow::onEditParameter(const QString& paramName, int index)
         // Mark as modified
         setModified(true);
     }
-    */
 }
 
 void MainWindow::onEditObservation(const QString& obsName, int index)
