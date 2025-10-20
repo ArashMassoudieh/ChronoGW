@@ -133,8 +133,11 @@ public:
     size_t ObservationsCount() const { return observations_.size(); }
 
     const CTracer& getTracer(size_t index) const { return tracers_[index]; }
+    CTracer& getTracer(size_t index) { return tracers_[index]; }
     const CWell& getWell(size_t index) const { return wells_[index]; }
+    CWell& getWell(size_t index) { return wells_[index]; }
     const Observation& getObservation(size_t index) const { return observations_[index]; }
+    Observation& getObservation(size_t index) { return observations_[index]; }
     Observation* observation(size_t index) {return &observations_[index];}
     /**
      * @brief Get pointer to observations vector as base Observation type
@@ -318,6 +321,64 @@ public:
                                     const std::string& quantity,
                                     const std::string& locationType) const;
 
+
+    /**
+     * @brief Remove a well by index
+     * @param index Well index
+     * @return true if successful
+     */
+    bool removeWell(size_t index);
+
+    /**
+     * @brief Remove a tracer by index
+     * @param index Tracer index
+     * @return true if successful
+     */
+    bool removeTracer(size_t index);
+
+    /**
+     * @brief Remove a parameter by index
+     * @param index Parameter index
+     * @return true if successful
+     */
+    bool removeParameter(size_t index);
+
+    /**
+     * @brief Remove an observation by index
+     * @param index Observation index
+     * @return true if successful
+     */
+    bool removeObservation(size_t index);
+
+    /**
+ * @brief Add a new well
+ * @param well Well to add
+ */
+    void addWell(const CWell& well) { wells_.push_back(well); }
+
+    /**
+ * @brief Add a new tracer
+ * @param tracer Tracer to add
+ */
+    void addTracer(const CTracer& tracer) {
+        tracers_.push_back(tracer);
+        linkSourceTracers();  // Re-link in case this is a source tracer
+    }
+
+    /**
+ * @brief Add a new parameter
+ * @param param Parameter to add
+ */
+    void addParameter(const Parameter& param) {
+        parameters_.AddParameter(param);
+        inverse_enabled_ = true;
+    }
+
+    /**
+ * @brief Add a new observation
+ * @param obs Observation to add
+ */
+    void addObservation(const Observation& obs) { observations_.push_back(obs); }
 
 private:
     // ========================================================================

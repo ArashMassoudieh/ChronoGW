@@ -1345,3 +1345,105 @@ std::string CGWA::findLinkedParameter(const std::string& locationName,
 
     return ""; // Not found
 }
+
+bool CGWA::removeWell(size_t index)
+{
+    if (index >= wells_.size()) {
+        return false;
+    }
+
+    std::string wellName = wells_[index].getName();
+
+    // Remove all parameter linkages for this well
+    clearParameterLinkages(wellName, "well");
+
+    // Remove observations associated with this well
+    observations_.erase(
+        std::remove_if(observations_.begin(), observations_.end(),
+                       [&wellName](const Observation& obs) {
+                           return obs.GetLocation() == wellName;
+                       }),
+        observations_.end()
+        );
+
+    // Remove the well
+    wells_.erase(wells_.begin() + index);
+
+    return true;
+}
+
+bool CGWA::removeTracer(size_t index)
+{
+    if (index >= tracers_.size()) {
+        return false;
+    }
+
+    std::string tracerName = tracers_[index].getName();
+
+    // Remove all parameter linkages for this tracer
+    clearParameterLinkages(tracerName, "tracer");
+
+    // Clear source tracer references in other tracers
+    for (auto& tracer : tracers_) {
+        if (tracer.getSourceTracerName() == tracerName) {
+            tracer.setSourceTracerName("");
+            tracer.setSourceTracer(nullptr);
+        }
+    }
+
+    // Remove observations associated with this tracer
+    observations_.erase(
+        std::remove_if(observations_.begin(), observations_.end(),
+                       [&tracerName](const Observation& obs) {
+                           return obs.GetQuantity() == tracerName;
+                       }),
+        observations_.end()
+        );
+
+    // Remove the tracer
+    tracers_.erase(tracers_.begin() + index);
+
+    return true;
+}
+
+bool CGWA::removeParameter(size_t index)
+{
+    if (index >= static_cast<size_t>(parameters_.size())) {
+        return false;
+    }
+
+    // Get parameter name before removing
+    std::string paramName = parameters_[index]->GetName();
+
+    // Remove observations that reference this parameter as std_param
+    observations_.erase(
+        std::remove_if(observations_.begin(), observations_.end(),
+                       [&paramName](const Observation& obs) {
+                           return obs.GetStdParameterName() == paramName;
+                       }),
+        observations_.end()
+        );
+
+    // Remove the parameter
+    parameters_.RemoveParameter(index);
+
+    return true;
+}
+
+bool CGWA::removeObservation(size_t index)
+{
+    if (index >= observations_.size()) {
+        return false;
+    }
+
+    observations_.erase(observations_.begin() + index);
+
+    // Resize modeled data if it exists
+    if (modeled_data_.size() > index) {
+        // Note: TimeSeriesSet may need a method to remove an element
+        // For now, we'll just note this needs to be refreshed
+        modeled_data_ = TimeSeriesSet<double>();
+    }
+
+    return true;
+}

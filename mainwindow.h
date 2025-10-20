@@ -21,10 +21,17 @@ private slots:
     void onOpenFile();
     void onSaveFile();
     void onSaveAsFile();
-    void onEditWell(const QString& name, const QVariant& data);
+    void onEditWell(const QString& wellName, int index);
+    void onEditTracer(const QString& tracerName, int index);
+    void onEditParameter(const QString& paramName, int index);
+    void onEditObservation(const QString& obsName, int index);
     void onWellRenamed(const QString& oldName, const QString& newName, const QVariant& data);
-    void onEditTracer(const QString& name, const QVariant& data);
     void onTracerRenamed(const QString& oldName, const QString& newName, const QVariant& data);
+    void onAddWell();
+    void onAddTracer();
+    void onAddParameter();
+    void onAddObservation();
+    void onModelModified();
 
 private:
     Ui::MainWindow *ui;
@@ -37,7 +44,12 @@ private:
     IconListWidget* observationsWidget;
 
     void setupCentralWidget();
-    void updateAllWidgets();  // Helper to refresh all widgets from model
+    void updateAllWidgets();
+    bool isModified_;  // Track if document has unsaved changes
+    QString currentFilePath_;  // Track current file path
+
+    void setModified(bool modified);
+    void updateWindowTitle();
 };
 
 #endif // MAINWINDOW_H

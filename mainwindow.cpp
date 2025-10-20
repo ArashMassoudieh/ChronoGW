@@ -42,8 +42,10 @@ void MainWindow::setupCentralWidget()
 
     // Wells section (top-left)
     QLabel* wellsLabel = new QLabel("Wells", this);
-    wellsLabel->setStyleSheet("font-size: 14pt;");
+    wellsLabel->setStyleSheet("font-size: 14pt; font-weight: bold;");
     wellsWidget = new IconListWidget(this);
+    wellsWidget->setGWA(&gwaModel);
+    wellsWidget->setItemType(IconListWidget::ItemType::Well);
 
     QVBoxLayout* wellsLayout = new QVBoxLayout();
     wellsLayout->addWidget(wellsLabel);
@@ -51,8 +53,10 @@ void MainWindow::setupCentralWidget()
 
     // Tracers section (top-right)
     QLabel* tracersLabel = new QLabel("Tracers", this);
-    tracersLabel->setStyleSheet("font-size: 14pt;");
+    tracersLabel->setStyleSheet("font-size: 14pt; font-weight: bold;");
     tracersWidget = new IconListWidget(this);
+    tracersWidget->setGWA(&gwaModel);
+    tracersWidget->setItemType(IconListWidget::ItemType::Tracer);
 
     QVBoxLayout* tracersLayout = new QVBoxLayout();
     tracersLayout->addWidget(tracersLabel);
@@ -60,8 +64,10 @@ void MainWindow::setupCentralWidget()
 
     // Parameters section (bottom-left)
     QLabel* parametersLabel = new QLabel("Parameters", this);
-    parametersLabel->setStyleSheet("font-size: 14pt;");
+    parametersLabel->setStyleSheet("font-size: 14pt; font-weight: bold;");
     parametersWidget = new IconListWidget(this);
+    parametersWidget->setGWA(&gwaModel);
+    parametersWidget->setItemType(IconListWidget::ItemType::Parameter);
 
     QVBoxLayout* parametersLayout = new QVBoxLayout();
     parametersLayout->addWidget(parametersLabel);
@@ -69,8 +75,10 @@ void MainWindow::setupCentralWidget()
 
     // Observations section (bottom-right)
     QLabel* observationsLabel = new QLabel("Observations", this);
-    observationsLabel->setStyleSheet("font-size: 14pt;");
+    observationsLabel->setStyleSheet("font-size: 14pt; font-weight: bold;");
     observationsWidget = new IconListWidget(this);
+    observationsWidget->setGWA(&gwaModel);
+    observationsWidget->setItemType(IconListWidget::ItemType::Observation);
 
     QVBoxLayout* observationsLayout = new QVBoxLayout();
     observationsLayout->addWidget(observationsLabel);
@@ -79,13 +87,10 @@ void MainWindow::setupCentralWidget()
     // Add to grid: row, column, rowspan, colspan
     QWidget* wellsContainer = new QWidget();
     wellsContainer->setLayout(wellsLayout);
-
     QWidget* tracersContainer = new QWidget();
     tracersContainer->setLayout(tracersLayout);
-
     QWidget* parametersContainer = new QWidget();
     parametersContainer->setLayout(parametersLayout);
-
     QWidget* observationsContainer = new QWidget();
     observationsContainer->setLayout(observationsLayout);
 
@@ -97,22 +102,34 @@ void MainWindow::setupCentralWidget()
     mainLayout->addLayout(gridLayout);
     setCentralWidget(centralWidget);
 
+    // Connect signals
+    connect(wellsWidget, &IconListWidget::addItemRequested,
+            this, &MainWindow::onAddWell);
     connect(wellsWidget, &IconListWidget::itemPropertiesRequested,
             this, &MainWindow::onEditWell);
-    connect(wellsWidget, &IconListWidget::itemRenamed,
-            this, &MainWindow::onWellRenamed);
+    connect(wellsWidget, &IconListWidget::listModified,
+            this, &MainWindow::onModelModified);
+
+    connect(tracersWidget, &IconListWidget::addItemRequested,
+            this, &MainWindow::onAddTracer);
     connect(tracersWidget, &IconListWidget::itemPropertiesRequested,
             this, &MainWindow::onEditTracer);
-    connect(tracersWidget, &IconListWidget::itemRenamed,
-            this, &MainWindow::onTracerRenamed);
-}
+    connect(tracersWidget, &IconListWidget::listModified,
+            this, &MainWindow::onModelModified);
 
-void MainWindow::updateAllWidgets()
-{
-    wellsWidget->populateFromGWA(&gwaModel, IconListWidget::ItemType::Well);
-    tracersWidget->populateFromGWA(&gwaModel, IconListWidget::ItemType::Tracer);
-    parametersWidget->populateFromGWA(&gwaModel, IconListWidget::ItemType::Parameter);
-    observationsWidget->populateFromGWA(&gwaModel, IconListWidget::ItemType::Observation);
+    connect(parametersWidget, &IconListWidget::addItemRequested,
+            this, &MainWindow::onAddParameter);
+    //connect(parametersWidget, &IconListWidget::itemPropertiesRequested,
+    //        this, &MainWindow::onEditParameter);
+    connect(parametersWidget, &IconListWidget::listModified,
+            this, &MainWindow::onModelModified);
+
+    connect(observationsWidget, &IconListWidget::addItemRequested,
+            this, &MainWindow::onAddObservation);
+    //connect(observationsWidget, &IconListWidget::itemPropertiesRequested,
+    //        this, &MainWindow::onEditObservation);
+    connect(observationsWidget, &IconListWidget::listModified,
+            this, &MainWindow::onModelModified);
 }
 
 MainWindow::~MainWindow()
@@ -216,56 +233,75 @@ void MainWindow::onSaveAsFile()
     }
 }
 
-void MainWindow::onEditWell(const QString& name, const QVariant& data)
+void MainWindow::onEditWell(const QString& wellName, int index)
 {
-    int wellIndex = data.toInt();
-    if (wellIndex < 0 || wellIndex >= static_cast<int>(gwaModel.getWellCount())) {
-        QMessageBox::warning(this, tr("Error"), tr("Invalid well index."));
+    if (index < 0 || static_cast<size_t>(index) >= gwaModel.getWellCount()) {
         return;
     }
 
-    // Get mutable reference to well
-    CWell& well = gwaModel.getWellMutable(wellIndex);
-    std::string originalWellName = well.getName();
+    // Get mutable reference to the well
+    CWell& well = gwaModel.getWellMutable(index);
 
-    // Show dialog
+    // Create dialog for editing (pass pointer to well)
     WellDialog dialog(&gwaModel, &well, this);
 
     if (dialog.exec() == QDialog::Accepted) {
-        // Get updated well data
+        // Get updated well from dialog
         CWell updatedWell = dialog.getWell();
-        std::string newWellName = updatedWell.getName();
 
-        // Get parameter linkages from dialog
-        QMap<QString, QString> linkages = dialog.getParameterLinkages();
-
-        // Convert to std::map
-        std::map<std::string, std::string> linkagesStd;
-        for (auto it = linkages.begin(); it != linkages.end(); ++it) {
-            linkagesStd[it.key().toStdString()] = it.value().toStdString();
-        }
-
-        // If well name changed, clear linkages under old name
-        if (originalWellName != newWellName) {
-            gwaModel.clearParameterLinkages(originalWellName, "well");
-        }
-
-        // Copy updated data back to model
+        // Update the well in the model
         well = updatedWell;
 
-        // Update parameter linkages using CGWA's method
-        gwaModel.updateWellParameterLinkages(newWellName, linkagesStd);
+        // Update parameter linkages
+        QMap<QString, QString> linkages = dialog.getParameterLinkages();
+        std::map<std::string, std::string> linkagesMap;
+        for (auto it = linkages.begin(); it != linkages.end(); ++it) {
+            linkagesMap[it.key().toStdString()] = it.value().toStdString();
+        }
+        gwaModel.updateWellParameterLinkages(well.getName(), linkagesMap);
 
-        // Refresh the widget to show any changes
-        wellsWidget->populateFromGWA(&gwaModel, IconListWidget::ItemType::Well);
+        // Refresh the wells list
+        wellsWidget->refresh();
 
-        statusBar()->showMessage(
-            tr("Well '%1' updated").arg(QString::fromStdString(newWellName)),
-            3000
-            );
+        // Mark as modified
+        setModified(true);
     }
 }
 
+void MainWindow::onEditTracer(const QString& tracerName, int index)
+{
+    if (index < 0 || static_cast<size_t>(index) >= gwaModel.getTracerCount()) {
+        return;
+    }
+
+    // Get mutable reference to the tracer
+    CTracer& tracer = gwaModel.getTracerMutable(index);
+
+    // Create dialog for editing (pass pointer to tracer)
+    TracerDialog dialog(&gwaModel, &tracer, this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        // Get updated tracer from dialog
+        CTracer updatedTracer = dialog.getTracer();
+
+        // Update the tracer in the model
+        tracer = updatedTracer;
+
+        // Update parameter linkages
+        QMap<QString, QString> linkages = dialog.getParameterLinkages();
+        std::map<std::string, std::string> linkagesMap;
+        for (auto it = linkages.begin(); it != linkages.end(); ++it) {
+            linkagesMap[it.key().toStdString()] = it.value().toStdString();
+        }
+        gwaModel.updateTracerParameterLinkages(tracer.getName(), linkagesMap);
+
+        // Refresh the tracers list
+        tracersWidget->refresh();
+
+        // Mark as modified
+        setModified(true);
+    }
+}
 void MainWindow::onWellRenamed(const QString& oldName, const QString& newName, const QVariant& data)
 {
     int wellIndex = data.toInt();
@@ -280,7 +316,7 @@ void MainWindow::onWellRenamed(const QString& oldName, const QString& newName, c
         QMessageBox::warning(this, tr("Invalid Name"),
                              tr("Well name cannot be empty."));
         // Revert the name in the widget
-        wellsWidget->populateFromGWA(&gwaModel, IconListWidget::ItemType::Well);
+        wellsWidget->refresh();
         return;
     }
 
@@ -291,7 +327,7 @@ void MainWindow::onWellRenamed(const QString& oldName, const QString& newName, c
             QMessageBox::warning(this, tr("Duplicate Name"),
                                  tr("A well with name '%1' already exists.").arg(newName));
             // Revert the name
-            wellsWidget->populateFromGWA(&gwaModel, IconListWidget::ItemType::Well);
+            wellsWidget->refresh();
             return;
         }
     }
@@ -330,57 +366,6 @@ void MainWindow::onWellRenamed(const QString& oldName, const QString& newName, c
 
     statusBar()->showMessage(tr("Well renamed from '%1' to '%2'").arg(oldName, newName), 3000);
 }
-
-void MainWindow::onEditTracer(const QString& name, const QVariant& data)
-{
-    int tracerIndex = data.toInt();
-    if (tracerIndex < 0 || tracerIndex >= static_cast<int>(gwaModel.getTracerCount())) {
-        QMessageBox::warning(this, tr("Error"), tr("Invalid tracer index."));
-        return;
-    }
-
-    // Get mutable reference to tracer
-    CTracer& tracer = gwaModel.getTracerMutable(tracerIndex);
-    std::string originalTracerName = tracer.getName();
-
-    // Show dialog
-    TracerDialog dialog(&gwaModel, &tracer, this);
-
-    if (dialog.exec() == QDialog::Accepted) {
-        // Get updated tracer data
-        CTracer updatedTracer = dialog.getTracer();
-        std::string newTracerName = updatedTracer.getName();
-
-        // Get parameter linkages from dialog
-        QMap<QString, QString> linkages = dialog.getParameterLinkages();
-
-        // Convert to std::map
-        std::map<std::string, std::string> linkagesStd;
-        for (auto it = linkages.begin(); it != linkages.end(); ++it) {
-            linkagesStd[it.key().toStdString()] = it.value().toStdString();
-        }
-
-        // If tracer name changed, clear linkages under old name
-        if (originalTracerName != newTracerName) {
-            gwaModel.clearParameterLinkages(originalTracerName, "tracer");
-        }
-
-        // Copy updated data back to model
-        tracer = updatedTracer;
-
-        // Update parameter linkages using CGWA's method
-        gwaModel.updateTracerParameterLinkages(newTracerName, linkagesStd);
-
-        // Refresh the widget to show any changes
-        tracersWidget->populateFromGWA(&gwaModel, IconListWidget::ItemType::Tracer);
-
-        statusBar()->showMessage(
-            tr("Tracer '%1' updated").arg(QString::fromStdString(newTracerName)),
-            3000
-            );
-    }
-}
-
 void MainWindow::onTracerRenamed(const QString& oldName, const QString& newName, const QVariant& data)
 {
     int tracerIndex = data.toInt();
@@ -395,7 +380,7 @@ void MainWindow::onTracerRenamed(const QString& oldName, const QString& newName,
         QMessageBox::warning(this, tr("Invalid Name"),
                              tr("Tracer name cannot be empty."));
         // Revert the name in the widget
-        tracersWidget->populateFromGWA(&gwaModel, IconListWidget::ItemType::Tracer);
+        tracersWidget->refresh();
         return;
     }
 
@@ -406,7 +391,7 @@ void MainWindow::onTracerRenamed(const QString& oldName, const QString& newName,
             QMessageBox::warning(this, tr("Duplicate Name"),
                                  tr("A tracer with name '%1' already exists.").arg(newName));
             // Revert the name
-            tracersWidget->populateFromGWA(&gwaModel, IconListWidget::ItemType::Tracer);
+            tracersWidget->refresh();
             return;
         }
     }
@@ -444,4 +429,221 @@ void MainWindow::onTracerRenamed(const QString& oldName, const QString& newName,
     gwaModel.updateTracerParameterLinkages(newNameStd, currentLinkages);
 
     statusBar()->showMessage(tr("Tracer renamed from '%1' to '%2'").arg(oldName, newName), 3000);
+}
+
+void MainWindow::onAddWell()
+{
+    // Create dialog for new well (pass nullptr for well pointer to indicate new)
+    WellDialog dialog(&gwaModel, nullptr, this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        // Get the well from dialog
+        CWell well = dialog.getWell();
+
+        // Add to model
+        gwaModel.addWell(well);
+
+        // Get parameter linkages and apply them
+        QMap<QString, QString> linkages = dialog.getParameterLinkages();
+        if (!linkages.isEmpty()) {
+            std::map<std::string, std::string> linkagesMap;
+            for (auto it = linkages.begin(); it != linkages.end(); ++it) {
+                linkagesMap[it.key().toStdString()] = it.value().toStdString();
+            }
+            gwaModel.updateWellParameterLinkages(well.getName(), linkagesMap);
+        }
+
+        // Refresh the wells list
+        wellsWidget->refresh();
+
+        // Mark as modified
+        setModified(true);
+    }
+}
+
+void MainWindow::onAddTracer()
+{
+    // Create dialog for new tracer (pass nullptr for tracer pointer to indicate new)
+    TracerDialog dialog(&gwaModel, nullptr, this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        // Get the tracer from dialog
+        CTracer tracer = dialog.getTracer();
+
+        // Add to model
+        gwaModel.addTracer(tracer);
+
+        // Get parameter linkages and apply them
+        QMap<QString, QString> linkages = dialog.getParameterLinkages();
+        if (!linkages.isEmpty()) {
+            std::map<std::string, std::string> linkagesMap;
+            for (auto it = linkages.begin(); it != linkages.end(); ++it) {
+                linkagesMap[it.key().toStdString()] = it.value().toStdString();
+            }
+            gwaModel.updateTracerParameterLinkages(tracer.getName(), linkagesMap);
+        }
+
+        // Refresh the tracers list
+        tracersWidget->refresh();
+
+        // Mark as modified
+        setModified(true);
+    }
+}
+
+
+void MainWindow::onAddParameter()
+{
+    /* Create dialog for new parameter
+    ParameterDialog dialog(&gwaModel, nullptr, this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        // Get the parameter from dialog
+        Parameter param = dialog.getParameter();
+
+        // Add to model
+        gwaModel.addParameter(param);
+
+        // Refresh the parameters list
+        parametersWidget->refresh();
+
+        // Mark as modified
+        setModified(true);
+    }
+    */
+}
+
+void MainWindow::onAddObservation()
+{
+    // Create dialog for new observation
+    /*ObservationDialog dialog(&gwaModel, nullptr, this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        // Get the observation from dialog
+        Observation obs = dialog.getObservation();
+
+        // Add to model
+        gwaModel.addObservation(obs);
+
+        // Refresh the observations list
+        observationsWidget->refresh();
+
+        // Mark as modified
+        setModified(true);
+    }
+    */
+}
+
+void MainWindow::onModelModified()
+{
+    // Called when any list widget modifies the model
+    // (items added, removed, or renamed)
+
+    // Refresh all widgets to ensure consistency
+    // (e.g., if a well is deleted, its observations should disappear)
+    updateAllWidgets();
+
+    // Mark document as modified
+    setModified(true);
+}
+
+void MainWindow::setModified(bool modified)
+{
+    isModified_ = modified;
+    updateWindowTitle();
+}
+
+void MainWindow::updateWindowTitle()
+{
+    QString title = "ChronoGW";
+
+    if (!currentFilePath_.isEmpty()) {
+        QFileInfo fileInfo(currentFilePath_);
+        title = fileInfo.fileName() + " - ChronoGW";
+    } else {
+        title = "Untitled - ChronoGW";
+    }
+
+    if (isModified_) {
+        title += " *";  // Add asterisk to indicate unsaved changes
+    }
+
+    setWindowTitle(title);
+}
+
+void MainWindow::updateAllWidgets()
+{
+    wellsWidget->refresh();
+    tracersWidget->refresh();
+    parametersWidget->refresh();
+    observationsWidget->refresh();
+}
+
+void MainWindow::onEditParameter(const QString& paramName, int index)
+{
+    if (index < 0 || static_cast<size_t>(index) >= gwaModel.getParameterCount()) {
+        return;
+    }
+
+    // TODO: Implement ParameterDialog
+    QMessageBox::information(this, "Edit Parameter",
+                             QString("Edit parameter: %1 (index: %2)\n\nParameterDialog not yet implemented.")
+                                 .arg(paramName).arg(index));
+
+    /*
+    // Get mutable reference to the parameter
+    Parameter* param = gwaModel.getParameter(index);
+    if (!param) return;
+
+    // Create dialog for editing
+    ParameterDialog dialog(&gwaModel, param, this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        // Get updated parameter from dialog
+        Parameter updatedParam = dialog.getParameter();
+
+        // Update the parameter in the model
+        *param = updatedParam;
+
+        // Refresh the parameters list
+        parametersWidget->refresh();
+
+        // Mark as modified
+        setModified(true);
+    }
+    */
+}
+
+void MainWindow::onEditObservation(const QString& obsName, int index)
+{
+    if (index < 0 || static_cast<size_t>(index) >= gwaModel.getObservationCount()) {
+        return;
+    }
+
+    // TODO: Implement ObservationDialog
+    QMessageBox::information(this, "Edit Observation",
+                             QString("Edit observation: %1 (index: %2)\n\nObservationDialog not yet implemented.")
+                                 .arg(obsName).arg(index));
+
+    /*
+    // Get mutable reference to the observation
+    Observation& obs = gwaModel.getObservation(index);
+
+    // Create dialog for editing
+    ObservationDialog dialog(&gwaModel, &obs, this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        // Get updated observation from dialog
+        Observation updatedObs = dialog.getObservation();
+
+        // Update the observation in the model
+        obs = updatedObs;
+
+        // Refresh the observations list
+        observationsWidget->refresh();
+
+        // Mark as modified
+        setModified(true);
+    }
+    */
 }

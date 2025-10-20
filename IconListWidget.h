@@ -1,9 +1,12 @@
 #ifndef ICONLISTWIDGET_H
 #define ICONLISTWIDGET_H
 
+#include <QWidget>
 #include <QListWidget>
 #include <QTimer>
 #include <QString>
+#include <QToolBar>
+#include <QVBoxLayout>
 
 // Forward declaration
 class CGWA;
@@ -14,11 +17,12 @@ class CGWA;
  *
  * Features:
  * - Icon view with text labels
+ * - Add/Remove toolbar buttons
  * - Double-click to edit/view properties
  * - Single-click + wait or F2 to rename
  * - Context menu support (right-click)
  */
-class IconListWidget : public QListWidget
+class IconListWidget : public QWidget
 {
     Q_OBJECT
 
@@ -33,24 +37,26 @@ public:
     explicit IconListWidget(QWidget *parent = nullptr);
 
     /**
+     * @brief Set the GWA model reference
+     * @param gwa Pointer to GWA model
+     */
+    void setGWA(CGWA* gwa) { gwa_ = gwa; }
+
+    /**
      * @brief Set the type of items this widget will display
      * @param type The type (Well, Tracer, Parameter, or Observation)
      */
     void setItemType(ItemType type);
 
     /**
-     * @brief Add a new item to the list
-     * @param name The name/label of the item
-     * @param data Optional user data associated with the item
+     * @brief Get the current item type
      */
-    void addItem(const QString& name, const QVariant& data = QVariant());
+    ItemType getItemType() const { return currentItemType; }
 
     /**
-     * @brief Populate widget from GWA model
-     * @param gwa Pointer to GWA model
-     * @param type Type of items to display (Well, Tracer, Parameter, or Observation)
+     * @brief Refresh the list from the GWA model
      */
-    void populateFromGWA(CGWA* gwa, ItemType type);
+    void refresh();
 
     /**
      * @brief Get all item names in the list
@@ -59,49 +65,56 @@ public:
     QStringList getItemNames() const;
 
     /**
-     * @brief Remove selected item(s)
+     * @brief Get the internal QListWidget
      */
-    void removeSelectedItems();
+    QListWidget* listWidget() { return listWidget_; }
 
 signals:
     /**
+     * @brief Emitted when user clicks the Add button
+     */
+    void addItemRequested();
+
+    /**
      * @brief Emitted when user double-clicks an item to edit properties
      * @param itemName The name of the item
-     * @param userData The associated user data
+     * @param index Index in the GWA model
      */
-    void itemPropertiesRequested(const QString& itemName, const QVariant& userData);
+    void itemPropertiesRequested(const QString& itemName, int index);
 
     /**
-     * @brief Emitted when user renames an item
-     * @param oldName The previous name
-     * @param newName The new name
-     * @param userData The associated user data
+     * @brief Emitted when the list has been modified (item added/removed/renamed)
      */
-    void itemRenamed(const QString& oldName, const QString& newName, const QVariant& userData);
-
-    /**
-     * @brief Emitted when user requests to delete an item
-     * @param itemName The name of the item to delete
-     * @param userData The associated user data
-     */
-    void itemDeleteRequested(const QString& itemName, const QVariant& userData);
-
-protected:
-    void mouseDoubleClickEvent(QMouseEvent* event) override;
-    void mousePressEvent(QMouseEvent* event) override;
-    void keyPressEvent(QKeyEvent* event) override;
+    void listModified();
 
 private slots:
+    void onAddClicked();
+    void onRemoveClicked();
     void onItemClicked(QListWidgetItem* item);
     void onRenameTimeout();
     void onItemChanged(QListWidgetItem* item);
     void showContextMenu(const QPoint& pos);
+    void onItemDoubleClicked(QListWidgetItem* item);
 
 private:
-    void setupWidget();
+    void setupUI();
+    void setupListWidget();
     void loadIcon();
     void startRename(QListWidgetItem* item);
+    void removeSelectedItems();
+    void addItem(const QString& name, int index);
 
+    // UI Components
+    QVBoxLayout* mainLayout_;
+    QToolBar* toolbar_;
+    QListWidget* listWidget_;
+    QAction* addAction_;
+    QAction* removeAction_;
+
+    // Model reference
+    CGWA* gwa_;
+
+    // State
     ItemType currentItemType;
     QIcon currentIcon;
     QTimer* renameTimer;
