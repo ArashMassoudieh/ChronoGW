@@ -82,6 +82,7 @@ SOURCES += \
     chartwindow.cpp \
     constantortimeserieswidget.cpp \
     main_gui.cpp \
+    observationdialog.cpp \
     parameterdialog.cpp \
     parametervaluewidget.cpp \
     tracerdialog.cpp \
@@ -125,6 +126,7 @@ HEADERS += \
     chartviewer.h \
     chartwindow.h \
     constantortimeserieswidget.h \
+    observationdialog.h \
     parameterdialog.h \
     parametervaluewidget.h \
     tracerdialog.h \

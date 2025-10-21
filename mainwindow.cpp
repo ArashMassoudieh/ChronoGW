@@ -11,6 +11,7 @@
 #include "welldialog.h"
 #include "tracerdialog.h"
 #include "parameterdialog.h"
+#include "observationdialog.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -127,8 +128,8 @@ void MainWindow::setupCentralWidget()
 
     connect(observationsWidget, &IconListWidget::addItemRequested,
             this, &MainWindow::onAddObservation);
-    //connect(observationsWidget, &IconListWidget::itemPropertiesRequested,
-    //        this, &MainWindow::onEditObservation);
+    connect(observationsWidget, &IconListWidget::itemPropertiesRequested,
+            this, &MainWindow::onEditObservation);
     connect(observationsWidget, &IconListWidget::listModified,
             this, &MainWindow::onModelModified);
 }
@@ -518,7 +519,7 @@ void MainWindow::onAddParameter()
 void MainWindow::onAddObservation()
 {
     // Create dialog for new observation
-    /*ObservationDialog dialog(&gwaModel, nullptr, this);
+    ObservationDialog dialog(&gwaModel, nullptr, this);
 
     if (dialog.exec() == QDialog::Accepted) {
         // Get the observation from dialog
@@ -533,7 +534,6 @@ void MainWindow::onAddObservation()
         // Mark as modified
         setModified(true);
     }
-    */
 }
 
 void MainWindow::onModelModified()
@@ -615,24 +615,19 @@ void MainWindow::onEditObservation(const QString& obsName, int index)
         return;
     }
 
-    // TODO: Implement ObservationDialog
-    QMessageBox::information(this, "Edit Observation",
-                             QString("Edit observation: %1 (index: %2)\n\nObservationDialog not yet implemented.")
-                                 .arg(obsName).arg(index));
-
-    /*
     // Get mutable reference to the observation
-    Observation& obs = gwaModel.getObservation(index);
+    Observation* obs = gwaModel.observation(index);
+    if (!obs) return;
 
     // Create dialog for editing
-    ObservationDialog dialog(&gwaModel, &obs, this);
+    ObservationDialog dialog(&gwaModel, obs, this);
 
     if (dialog.exec() == QDialog::Accepted) {
         // Get updated observation from dialog
         Observation updatedObs = dialog.getObservation();
 
         // Update the observation in the model
-        obs = updatedObs;
+        *obs = updatedObs;
 
         // Refresh the observations list
         observationsWidget->refresh();
@@ -640,5 +635,4 @@ void MainWindow::onEditObservation(const QString& obsName, int index)
         // Mark as modified
         setModified(true);
     }
-    */
 }
