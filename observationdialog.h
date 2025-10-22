@@ -42,6 +42,7 @@ private slots:
     void onBrowseObservedData();
     void onDetectionLimitToggled(bool checked);
     void onPlotObservedData();
+    void onCalculateAndPlot();
 
 private:
     void setupUI();
@@ -66,6 +67,7 @@ private:
     QCheckBox* detectionLimitCheckBox_;
     QDoubleSpinBox* detectionLimitSpinBox_;
     QCheckBox* countMaxCheckBox_;
+    QPushButton* calculatePlotButton_;
 };
 
 #endif // OBSERVATIONDIALOG_H

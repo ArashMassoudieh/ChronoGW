@@ -348,6 +348,14 @@ void IconListWidget::showContextMenu(const QPoint& pos)
     if (item) {
         // Item-specific menu
         QAction* propertiesAction = contextMenu.addAction(tr("Properties..."));
+
+        // Add type-specific actions
+        QAction* plotAction = nullptr;
+        if (currentItemType == ItemType::Observation) {
+            plotAction = contextMenu.addAction(QIcon(":/icons/modeledvsmeasured.png"),
+                                               tr("Plot Modeled vs. Observed"));
+        }
+
         QAction* renameAction = contextMenu.addAction(tr("Rename"));
         contextMenu.addSeparator();
         QAction* deleteAction = contextMenu.addAction(tr("Delete"));
@@ -357,9 +365,15 @@ void IconListWidget::showContextMenu(const QPoint& pos)
         if (selectedAction == propertiesAction) {
             int index = item->data(Qt::UserRole).toInt();
             emit itemPropertiesRequested(item->text(), index);
-        } else if (selectedAction == renameAction) {
+        }
+        else if (plotAction && selectedAction == plotAction) {
+            int index = item->data(Qt::UserRole).toInt();
+            emit itemContextActionRequested(item->text(), index, "plot");
+        }
+        else if (selectedAction == renameAction) {
             startRename(item);
-        } else if (selectedAction == deleteAction) {
+        }
+        else if (selectedAction == deleteAction) {
             removeSelectedItems();
         }
     } else {

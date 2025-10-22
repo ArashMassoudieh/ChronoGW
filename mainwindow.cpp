@@ -12,6 +12,7 @@
 #include "tracerdialog.h"
 #include "parameterdialog.h"
 #include "observationdialog.h"
+#include "chartwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -132,6 +133,8 @@ void MainWindow::setupCentralWidget()
             this, &MainWindow::onEditObservation);
     connect(observationsWidget, &IconListWidget::listModified,
             this, &MainWindow::onModelModified);
+    connect(observationsWidget, &IconListWidget::itemContextActionRequested,  // <-- ADD THIS
+            this, &MainWindow::onObservationContextAction);
 }
 
 MainWindow::~MainWindow()
@@ -634,5 +637,87 @@ void MainWindow::onEditObservation(const QString& obsName, int index)
 
         // Mark as modified
         setModified(true);
+    }
+}
+
+void MainWindow::onObservationContextAction(const QString& obsName, int index, const QString& actionType)
+{
+    if (actionType == "plot") {
+        onPlotObservation(obsName, index);
+    }
+    // Can add more action types here in the future if needed
+}
+
+void MainWindow::onPlotObservation(const QString& obsName, int index)
+{
+    if (index < 0 || static_cast<size_t>(index) >= gwaModel.getObservationCount()) {
+        return;
+    }
+
+    try {
+        const Observation& obs = gwaModel.getObservation(index);
+
+        // Get observed data
+        const TimeSeries<double>& observedData = obs.GetObservedData();
+
+        if (observedData.size() == 0) {
+            QMessageBox::warning(this, tr("No Data"),
+                                 tr("Observation '%1' has no observed data.").arg(obsName));
+            return;
+        }
+
+        // Calculate modeled data
+        TimeSeries<double> modeledData = gwaModel.calculateSingleObservation(index);
+
+        if (modeledData.size() == 0) {
+            QMessageBox::warning(this, tr("Calculation Failed"),
+                                 tr("Failed to calculate modeled concentrations for '%1'.").arg(obsName));
+            return;
+        }
+
+        // Create TimeSeriesSet with both datasets
+        TimeSeriesSet<double> dataSet;
+
+        TimeSeries<double> obsData = observedData;
+        obsData.setName("Observed");
+        dataSet.append(obsData);
+
+        modeledData.setName("Modeled");
+        dataSet.append(modeledData);
+
+        // Create chart title
+        QString title = QString("Concentration Comparison: %1\n%2 - %3")
+                            .arg(obsName)
+                            .arg(QString::fromStdString(obs.GetLocation()))
+                            .arg(QString::fromStdString(obs.GetQuantity()));
+
+        // Show in chart window
+        ChartWindow* chartWindow = ChartWindow::showChart(dataSet, title, this);
+        chartWindow->setAxisLabels("Time", "Concentration");
+        chartWindow->chartViewer()->setPlotMode(ChartViewer::Symbols);
+
+        // Calculate and display fit statistics
+        double sse = 0.0;
+        double mae = 0.0;
+        int n = std::min(observedData.size(), modeledData.size());
+
+        for (int i = 0; i < n; ++i) {
+            double diff = observedData.getValue(i) - modeledData.getValue(i);
+            sse += diff * diff;
+            mae += std::abs(diff);
+        }
+
+        double rmse = std::sqrt(sse / n);
+        mae /= n;
+
+        QString stats = QString("  [RMSE: %1  MAE: %2]")
+                            .arg(rmse, 0, 'g', 4)
+                            .arg(mae, 0, 'g', 4);
+
+        chartWindow->setWindowTitle(chartWindow->windowTitle() + stats);
+
+    } catch (const std::exception& e) {
+        QMessageBox::critical(this, tr("Error"),
+                              tr("Failed to plot observation:\n%1").arg(e.what()));
     }
 }

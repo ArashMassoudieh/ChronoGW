@@ -87,6 +87,14 @@ signals:
      */
     void listModified();
 
+    /**
+     * @brief Emitted when user requests context menu action for an item
+     * @param itemName The name of the item
+     * @param index Index in the GWA model
+     * @param actionType Type of action requested (e.g., "plot")
+     */
+    void itemContextActionRequested(const QString& itemName, int index, const QString& actionType);
+
 private slots:
     void onAddClicked();
     void onRemoveClicked();

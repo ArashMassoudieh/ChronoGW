@@ -380,6 +380,20 @@ public:
  */
     void addObservation(const Observation& obs) { observations_.push_back(obs); }
 
+    /**
+     * @brief Calculate modeled concentration for a single observation
+     * @param obs_index Index of the observation
+     * @return TimeSeries of modeled concentrations at observation times
+     */
+    TimeSeries<double> calculateSingleObservation(size_t obs_index);
+
+    /**
+     * @brief Calculate modeled concentration for a single observation by name
+     * @param obs_name Name of the observation
+     * @return TimeSeries of modeled concentrations at observation times
+     */
+    TimeSeries<double> calculateSingleObservation(const std::string& obs_name);
+
 private:
     // ========================================================================
     // Private Configuration Loading Methods
@@ -448,6 +462,8 @@ private:
      * @brief Calculate likelihood contribution from one observation
      */
     double calculateObservationLikelihood(size_t obs_index) const;
+
+
 
     // ========================================================================
     // Member Variables

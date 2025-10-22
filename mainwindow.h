@@ -32,7 +32,8 @@ private slots:
     void onAddParameter();
     void onAddObservation();
     void onModelModified();
-
+    void onPlotObservation(const QString& obsName, int index);
+    void onObservationContextAction(const QString& obsName, int index, const QString& actionType);
 private:
     Ui::MainWindow *ui;
     QString currentFilePath;

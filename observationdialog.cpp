@@ -80,6 +80,11 @@ void ObservationDialog::setupUI()
     observedDataLabel_->setWordWrap(true);
     observedDataLabel_->setStyleSheet("QLabel { padding: 5px; background-color: #f0f0f0; border: 1px solid #ccc; }");
     browseDataButton_ = new QPushButton(tr("Browse..."), this);
+    QIcon browseIcon = QIcon::fromTheme("document-open", QIcon(":/icons/folder.png"));
+    if (!browseIcon.isNull()) {
+        browseDataButton_->setIcon(browseIcon);
+    }
+    connect(browseDataButton_, &QPushButton::clicked, this, &ObservationDialog::onBrowseObservedData);
     connect(browseDataButton_, &QPushButton::clicked, this, &ObservationDialog::onBrowseObservedData);
 
     fileLayout->addWidget(fileLabel);
@@ -88,15 +93,31 @@ void ObservationDialog::setupUI()
     dataLayout->addLayout(fileLayout);
 
     // Plot button row
-    QPushButton* plotDataButton = new QPushButton(tr("Plot Observed Data"), this);
+    QPushButton* plotDataButton = new QPushButton(this);
+    QIcon plotIcon = QIcon::fromTheme("office-chart-line", QIcon(":/icons/observeddata.png"));
+    if (!plotIcon.isNull()) {
+        plotDataButton->setIcon(plotIcon);
+    }
     plotDataButton->setToolTip(tr("Preview the observed data time series"));
+    plotDataButton->setIconSize(QSize(48, 48));
     connect(plotDataButton, &QPushButton::clicked, this, &ObservationDialog::onPlotObservedData);
 
-    QHBoxLayout* plotButtonLayout = new QHBoxLayout();
-    plotButtonLayout->addStretch();
-    plotButtonLayout->addWidget(plotDataButton);
-    plotButtonLayout->addStretch();
-    dataLayout->addLayout(plotButtonLayout);
+    calculatePlotButton_ = new QPushButton(this);
+    QIcon calcIcon(":/icons/modeledvsmeasured.png");
+    if (!calcIcon.isNull()) {
+        calculatePlotButton_->setIcon(calcIcon);
+    }
+    calculatePlotButton_->setToolTip(tr("Calculate modeled concentrations using current parameter values and plot with observed data"));
+    calculatePlotButton_->setIconSize(QSize(48, 48));
+    connect(calculatePlotButton_, &QPushButton::clicked, this, &ObservationDialog::onCalculateAndPlot);
+
+    // Put both buttons in the same layout
+    QHBoxLayout* buttonsLayout = new QHBoxLayout();
+    buttonsLayout->addStretch();
+    buttonsLayout->addWidget(plotDataButton);
+    buttonsLayout->addWidget(calculatePlotButton_);
+    buttonsLayout->addStretch();
+    dataLayout->addLayout(buttonsLayout);
 
     mainLayout->addWidget(dataGroup);
     // Error Structure Group
@@ -404,7 +425,7 @@ void ObservationDialog::onPlotObservedData()
         if (observedData.size() == 1) {
             chartWindow->chartViewer()->setPlotMode(ChartViewer::Symbols);
         } else {
-            chartWindow->chartViewer()->setPlotMode(ChartViewer::LinesAndSymbols);
+            chartWindow->chartViewer()->setPlotMode(ChartViewer::Symbols);
         }
 
     } catch (const std::exception& e) {
@@ -416,5 +437,133 @@ void ObservationDialog::onPlotObservedData()
         QMessageBox::critical(this, tr("Error Loading Data"),
                               tr("Failed to load observed data file:\n%1")
                                   .arg(observedDataPath_));
+    }
+}
+
+void ObservationDialog::onCalculateAndPlot()
+{
+    // Validate selections
+    if (wellCombo_->currentIndex() < 0) {
+        QMessageBox::warning(this, tr("Invalid Input"),
+                             tr("Please select a well first."));
+        return;
+    }
+
+    if (tracerCombo_->currentIndex() < 0) {
+        QMessageBox::warning(this, tr("Invalid Input"),
+                             tr("Please select a tracer first."));
+        return;
+    }
+
+    if (observedDataPath_.isEmpty()) {
+        QMessageBox::warning(this, tr("No Data File"),
+                             tr("Please select an observed data file first."));
+        return;
+    }
+
+    if (!gwa_) {
+        QMessageBox::critical(this, tr("Error"),
+                              tr("GWA model not available."));
+        return;
+    }
+
+    try {
+        // Create a temporary observation object to calculate
+        Observation tempObs;
+        tempObs.SetLocation(wellCombo_->currentText().toStdString());
+        tempObs.SetQuantity(tracerCombo_->currentText().toStdString());
+
+        // Load observed data
+        TimeSeries<double> observedData(observedDataPath_.toStdString());
+        tempObs.SetObservedTimeSeries(observedData);
+
+        if (observedData.size() == 0) {
+            QMessageBox::warning(this, tr("Empty Data"),
+                                 tr("The observed data file contains no data points."));
+            return;
+        }
+
+        // Find if this observation already exists in the model
+        int obs_index = -1;
+        if (obs_) {
+            // Editing existing observation - find its index
+            for (size_t i = 0; i < gwa_->getObservationCount(); ++i) {
+                if (&gwa_->getObservation(i) == obs_) {
+                    obs_index = static_cast<int>(i);
+                    break;
+                }
+            }
+        }
+
+        TimeSeries<double> modeledData;
+
+        if (obs_index >= 0) {
+            // Use existing observation
+            modeledData = gwa_->calculateSingleObservation(obs_index);
+        } else {
+            // For new observation, temporarily add it, calculate, then remove
+            gwa_->addObservation(tempObs);
+            size_t temp_index = gwa_->getObservationCount() - 1;
+            modeledData = gwa_->calculateSingleObservation(temp_index);
+            gwa_->removeObservation(temp_index);
+        }
+
+        if (modeledData.size() == 0) {
+            QMessageBox::warning(this, tr("Calculation Failed"),
+                                 tr("Failed to calculate modeled concentrations. Check that well and tracer exist in the model."));
+            return;
+        }
+
+        // Create TimeSeriesSet with both observed and modeled data
+        TimeSeriesSet<double> dataSet;
+
+        observedData.setName("Observed");
+        dataSet.append(observedData);
+
+        modeledData.setName("Modeled");
+        dataSet.append(modeledData);
+
+        // Create chart title
+        QString title = QString("Concentration Comparison");
+        if (!nameEdit_->text().isEmpty()) {
+            title += QString(": %1").arg(nameEdit_->text());
+        }
+        title += QString("\n%1 - %2")
+                     .arg(wellCombo_->currentText())
+                     .arg(tracerCombo_->currentText());
+
+        // Show in chart window
+        ChartWindow* chartWindow = ChartWindow::showChart(dataSet, title, this);
+        chartWindow->setAxisLabels("Time", "Concentration");
+
+        // Set to lines and symbols for better comparison
+        chartWindow->chartViewer()->setPlotMode(ChartViewer::Symbols);
+
+        // Calculate and display fit statistics
+        double sse = 0.0;
+        double mae = 0.0;
+        int n = std::min(observedData.size(), modeledData.size());
+
+        for (int i = 0; i < n; ++i) {
+            double diff = observedData.getValue(i) - modeledData.getValue(i);
+            sse += diff * diff;
+            mae += std::abs(diff);
+        }
+
+        double rmse = std::sqrt(sse / n);
+        mae /= n;
+
+        QString stats = QString("\nRMSE: %1  MAE: %2")
+                            .arg(rmse, 0, 'g', 4)
+                            .arg(mae, 0, 'g', 4);
+
+        chartWindow->setWindowTitle(chartWindow->windowTitle() + stats);
+
+    } catch (const std::exception& e) {
+        QMessageBox::critical(this, tr("Error"),
+                              tr("Failed to calculate concentrations:\n%1").arg(e.what()));
+    } catch (...) {
+        QMessageBox::critical(this, tr("Error"),
+                              tr("Failed to calculate concentrations due to unknown error."));
     }
 }

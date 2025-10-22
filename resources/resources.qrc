@@ -1,9 +1,11 @@
-<!DOCTYPE RCC>
-<RCC version="1.0">
+<RCC>
     <qresource prefix="/">
         <file>icons/well.png</file>
         <file>icons/tracer.png</file>
         <file>icons/parameter.png</file>
         <file>icons/observation.png</file>
+        <file>icons/distribution.png</file>
+        <file>icons/modeledvsmeasured.png</file>
+        <file>icons/observeddata.png</file>
     </qresource>
 </RCC>

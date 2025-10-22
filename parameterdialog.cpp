@@ -103,8 +103,13 @@ void ParameterDialog::setupUI()
     priorLayout->addRow(priorInfoLabel);
 
     // Add plot button
-    plotPriorButton_ = new QPushButton(tr("Plot Prior Distribution"), this);
-    plotPriorButton_->setToolTip(tr("Preview prior probability distribution"));
+    plotPriorButton_ = new QPushButton(this);
+    QIcon priorIcon = QIcon::fromTheme("office-chart-area", QIcon(":/icons/distribution.png"));
+    if (!priorIcon.isNull()) {
+        plotPriorButton_->setIcon(priorIcon);
+    }
+    plotPriorButton_->setToolTip(tr("Plot Prior Distribution"));  // Tooltip is important now!
+    plotPriorButton_->setIconSize(QSize(48, 48));  // Optional: adjust icon size
     connect(plotPriorButton_, &QPushButton::clicked, this, &ParameterDialog::onPlotPriorDistribution);
 
     QHBoxLayout* plotButtonLayout = new QHBoxLayout();

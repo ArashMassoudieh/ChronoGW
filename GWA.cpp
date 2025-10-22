@@ -1447,3 +1447,66 @@ bool CGWA::removeObservation(size_t index)
 
     return true;
 }
+
+TimeSeries<double> CGWA::calculateSingleObservation(size_t obs_index)
+{
+    if (obs_index >= observations_.size()) {
+        return TimeSeries<double>();
+    }
+
+    // Apply current parameter values to model
+    setAllParameterValues();
+
+    const Observation& obs = observations_[obs_index];
+
+    int well_idx = findWell(obs.GetLocation());
+    int tracer_idx = findTracer(obs.GetQuantity());
+
+    if (well_idx < 0 || well_idx >= static_cast<int>(wells_.size()) ||
+        tracer_idx < 0 || tracer_idx >= static_cast<int>(tracers_.size())) {
+        return TimeSeries<double>();
+    }
+
+    CWell& well = wells_[well_idx];
+    const CTracer& tracer = tracers_[tracer_idx];
+
+    // Get oldest input time for creating age distribution
+    double oldest_time = getOldestInputTime();
+
+    // Create age distribution for this well
+    well.createDistribution(oldest_time, 1000, 0.02);
+
+    // Calculate concentrations at observation times
+    TimeSeries<double> modeled;
+    const TimeSeries<double>& observed = obs.GetObservedData();
+
+    for (size_t j = 0; j < observed.size(); ++j) {
+        double time = observed.getTime(j);
+        double conc = tracer.calculateConcentration(
+            time,
+            well.getYoungAgeDistribution(),
+            well.getFractionOld(),
+            well.getVzDelay(),
+            settings_.fixed_old_tracer,
+            well.getAgeOld(),
+            well.getFractionMineral()
+            );
+
+        modeled.append(time, conc);
+    }
+
+    return modeled;
+}
+
+TimeSeries<double> CGWA::calculateSingleObservation(const std::string& obs_name)
+{
+    // Find observation by name
+    for (size_t i = 0; i < observations_.size(); ++i) {
+        if (observations_[i].GetName() == obs_name) {
+            return calculateSingleObservation(i);
+        }
+    }
+
+    // Observation not found
+    return TimeSeries<double>();
+}
