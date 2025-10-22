@@ -85,7 +85,7 @@ void ObservationDialog::setupUI()
         browseDataButton_->setIcon(browseIcon);
     }
     connect(browseDataButton_, &QPushButton::clicked, this, &ObservationDialog::onBrowseObservedData);
-    connect(browseDataButton_, &QPushButton::clicked, this, &ObservationDialog::onBrowseObservedData);
+    //connect(browseDataButton_, &QPushButton::clicked, this, &ObservationDialog::onBrowseObservedData);
 
     fileLayout->addWidget(fileLabel);
     fileLayout->addWidget(observedDataLabel_, 1);
