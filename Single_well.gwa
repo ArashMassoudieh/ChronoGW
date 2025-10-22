@@ -1,0 +1,43 @@
+path=/home/arash/Projects/ChronoGW/Inputs/
+outpath=/home/arash/Projects/ChronoGW/Outputs/
+
+well=8, {f=p[fraction_old_well8];param[0]=p[young_mean_age_well8];param[1]=p[young_p2_well8];distribution=Inverse-Gaussian; age_old=p[age_old_well8];fm=p[fm_well8]}
+
+tracer=3H, {decay=0.0562619460;input=3H.txt}
+tracer=3He, {source=3H}
+tracer=13C, {fm=1.0000000000;constant_input=p[13C_bio];co=p[13C_bio];cm=p[13C_mineral]}
+tracer=14C, {decay=0.0001209680;fm=1.0000000000;input=14C.txt}
+tracer=4He, {decay=p[He_acc_rate];constant_input=0.0000000000;linear_prod=1}
+tracer=NO3, {input=NO3.txt}
+tracer=85Kr, {decay=0.0644428390;input=85Kr.txt}
+
+observed=3H_well8, {well=8; tracer=3H; std_param=std_3H; error_structure=normal; observed_data=3H_well8.txt; count_max=1}
+observed=3He_well8, {well=8; tracer=3He; std_param=std_3He; error_structure=normal; observed_data=3He_well8.txt; count_max=1}
+observed=13C_well8, {well=8; tracer=13C; std_param=std_13C; error_structure=normal; observed_data=13C_well8.txt; count_max=1}
+observed=14C_well8, {well=8; tracer=14C; std_param=std_14C; error_structure=normal; observed_data=14C_well8.txt; count_max=1}
+observed=4He_well8, {well=8; tracer=4He; std_param=std_4He; error_structure=normal; observed_data=4He_well8.txt; count_max=1}
+observed=NO3_well8, {well=8; tracer=NO3; std_param=std_NO3; error_structure=normal; observed_data=NO3_well8.txt; count_max=1}
+observed=85Kr_well8, {well=8; tracer=85Kr; std_param=std_85Kr; error_structure=normal; observed_data=85Kr_well8.txt; count_max=1}
+
+project_start=1980.0000000000
+project_end=2040.0000000000
+
+pe_info=GAinfo.txt
+detout=modeled.txt
+realizedparam=realized_params.txt
+
+parameter=young_mean_age_well8, {low=5.0000000000;high=100.0000000000; prior_distribution=log-normal; value=30.0000000000}
+parameter=young_p2_well8, {low=1.0000000000;high=100.0000000000; prior_distribution=log-normal; value=20.0000000000}
+parameter=fraction_old_well8, {low=0.0000000000;high=1.0000000000; prior_distribution=uniform; value=0.2000000000}
+parameter=age_old_well8, {low=500.0000000000;high=20000.0000000000; prior_distribution=log-normal; value=5000.0000000000}
+parameter=fm_well8, {low=0.0000000000;high=1.0000000000; prior_distribution=uniform; value=0.4000000000}
+parameter=13C_bio, {low=-27.0000000000;high=-23.0000000000; prior_distribution=normal; value=-25.0000000000}
+parameter=He_acc_rate, {low=0.0010000000;high=10.0000000000; prior_distribution=log-normal; value=0.1000000000}
+parameter=13C_mineral, {low=0.0000000000;high=2.0000000000; prior_distribution=normal; value=1.0000000000}
+parameter=std_3H, {low=0.0100000000;high=10.0000000000; prior_distribution=log-normal; value=1.0000000000}
+parameter=std_3He, {low=0.0100000000;high=5.0000000000; prior_distribution=log-normal; value=0.5000000000}
+parameter=std_13C, {low=0.1000000000;high=2.0000000000; prior_distribution=log-normal; value=0.5000000000}
+parameter=std_14C, {low=1.0000000000;high=50.0000000000; prior_distribution=log-normal; value=10.0000000000}
+parameter=std_4He, {low=0.0100000000;high=10.0000000000; prior_distribution=log-normal; value=1.0000000000}
+parameter=std_NO3, {low=0.1000000000;high=5.0000000000; prior_distribution=log-normal; value=1.0000000000}
+parameter=std_85Kr, {low=0.1000000000;high=20.0000000000; prior_distribution=log-normal; value=2.0000000000}

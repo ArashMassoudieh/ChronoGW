@@ -1,0 +1,7 @@
+maxpop 40
+ngen 40
+pcross 1
+pmute 0.02
+shakescale 0.05
+shakescalered 0.75
+numthreads 10

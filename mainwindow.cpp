@@ -35,9 +35,13 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionSave, &QAction::triggered, this, &MainWindow::onSaveFile);
     connect(ui->actionSave_As, &QAction::triggered, this, &MainWindow::onSaveAsFile);
     connect(ui->actionGenetic_Algorithm_Settings, &QAction::triggered, this, &MainWindow::onGASettingsTriggered);
+    connect(ui->actionDeterministic_GA, &QAction::triggered, this, &MainWindow::onRunDeterministicGA);
+
     recentFilesMenu = new QMenu("Recent Projects", this);
     ui->actionRecent_Projects->setMenu(recentFilesMenu);
     updateRecentFilesMenu();
+
+    ga = CGA<CGWA>(&gwaModel);
 
 }
 
@@ -171,6 +175,31 @@ void MainWindow::onOpenFile()
         currentFilePath_ = fileName;
         statusBar()->showMessage(tr("Loaded: %1").arg(fileName), 3000);
 
+        qDebug() << "=== DEBUG: After loading GWA file ===";
+        qDebug() << "Current GA maxpop:" << ga.getPopulationSize();
+        qDebug() << "Current GA ngen:" << ga.getNumGenerations();
+
+        // Create a fresh GA object linked to the loaded model
+        ga = CGA<CGWA>(&gwaModel);
+
+        qDebug() << "=== DEBUG: After creating fresh GA ===";
+        qDebug() << "Current GA maxpop:" << ga.getPopulationSize();
+        qDebug() << "Current GA ngen:" << ga.getNumGenerations();
+
+        // Load GA settings if available (AFTER creating fresh GA)
+        QString gaFile = getGASettingsFilename(fileName);
+        qDebug() << "=== DEBUG: GA settings file:" << gaFile;
+        qDebug() << "File exists?" << QFile::exists(gaFile);
+
+        if (QFile::exists(gaFile)) {
+            qDebug() << "=== DEBUG: Loading GA settings from file ===";
+            loadGASettings(gaFile);
+
+            qDebug() << "=== DEBUG: After loading GA settings ===";
+            qDebug() << "Current GA maxpop:" << ga.getPopulationSize();
+            qDebug() << "Current GA ngen:" << ga.getNumGenerations();
+        }
+
         updateAllWidgets();
 
     } else {
@@ -180,6 +209,7 @@ void MainWindow::onOpenFile()
             tr("Failed to load configuration file:\n%1").arg(fileName)
             );
     }
+
     addToRecentFiles(currentFilePath_);
 }
 
@@ -202,6 +232,11 @@ void MainWindow::onSaveFile()
 
     if (success) {
         statusBar()->showMessage(tr("Saved: %1").arg(currentFilePath_), 3000);
+
+        // Save GA settings
+        QString gaFile = getGASettingsFilename(currentFilePath_);
+        saveGASettings(gaFile);
+
     } else {
         QMessageBox::critical(
             this,
@@ -209,12 +244,13 @@ void MainWindow::onSaveFile()
             tr("Failed to save configuration file:\n%1").arg(currentFilePath_)
             );
     }
+
     addToRecentFiles(currentFilePath_);
 }
 
 void MainWindow::onSaveAsFile()
 {
-    // Always prompt for new filename
+    // Open save file dialog
     QString fileName = QFileDialog::getSaveFileName(
         this,
         tr("Save GWA Configuration File As"),
@@ -222,8 +258,15 @@ void MainWindow::onSaveAsFile()
         tr("GWA Files (*.gwa);;Text Files (*.txt);;All Files (*)")
         );
 
+    // Check if user cancelled
     if (fileName.isEmpty()) {
-        return;  // User cancelled
+        return;
+    }
+
+    // Ensure proper extension
+    if (!fileName.endsWith(".gwa", Qt::CaseInsensitive) &&
+        !fileName.endsWith(".txt", Qt::CaseInsensitive)) {
+        fileName += ".gwa";
     }
 
     // TODO: Update gwaModel with data from UI widgets before saving
@@ -236,8 +279,13 @@ void MainWindow::onSaveAsFile()
     bool success = gwaModel.exportToFile(fileName.toStdString());
 
     if (success) {
-        currentFilePath_ = fileName;  // Update current file path
-        statusBar()->showMessage(tr("Saved: %1").arg(currentFilePath_), 3000);
+        currentFilePath_ = fileName;
+        statusBar()->showMessage(tr("Saved: %1").arg(fileName), 3000);
+
+        // Save GA settings
+        QString gaFile = getGASettingsFilename(currentFilePath_);
+        saveGASettings(gaFile);
+
     } else {
         QMessageBox::critical(
             this,
@@ -245,8 +293,10 @@ void MainWindow::onSaveAsFile()
             tr("Failed to save configuration file:\n%1").arg(fileName)
             );
     }
+
     addToRecentFiles(currentFilePath_);
 }
+
 
 void MainWindow::onEditWell(const QString& wellName, int index)
 {
@@ -819,6 +869,16 @@ void MainWindow::onRecentFileTriggered()
             currentFilePath_ = filePath;
             // Load the file using your existing load logic
             gwaModel.loadFromFile(filePath.toStdString());
+
+            // Create a fresh GA object linked to the loaded model
+            ga = CGA<CGWA>(&gwaModel);
+
+            // Load GA settings if available
+            QString gaFile = getGASettingsFilename(filePath);
+            if (QFile::exists(gaFile)) {
+                loadGASettings(gaFile);
+            }
+
             updateAllWidgets();
             setModified(false);
             addToRecentFiles(filePath);
@@ -839,3 +899,275 @@ void MainWindow::onGASettingsTriggered()
     GASettingsDialog dialog(&ga, this);
     dialog.exec();
 }
+
+// ============================================================================
+// Helper: Get GA settings filename from project filename
+// ============================================================================
+QString MainWindow::getGASettingsFilename(const QString& projectFilename)
+{
+    QFileInfo fileInfo(projectFilename);
+    QString baseName = fileInfo.completeBaseName();
+    QString path = fileInfo.absolutePath();
+    return path + "/" + baseName + ".gasettings";
+}
+
+// ============================================================================
+// Save GA settings to file
+// ============================================================================
+void MainWindow::saveGASettings(const QString& filename)
+{
+    std::ofstream file(filename.toStdString());
+    if (!file.is_open()) {
+        return;
+    }
+
+    // Write GA parameters from the actual GA object
+    file << "maxpop " << ga.getPopulationSize() << "\n";
+    file << "ngen " << ga.getNumGenerations() << "\n";
+    file << "pcross " << ga.getCrossoverProb() << "\n";
+    file << "pmute " << ga.getMutationProb() << "\n";
+    file << "shakescale " << ga.getShakeScale() << "\n";
+    file << "shakescalered " << ga.getShakeScaleRed() << "\n";
+    file << "numthreads " << ga.getNumThreads() << "\n";
+
+    file.close();
+}
+
+// ============================================================================
+// Load GA settings from file
+// ============================================================================
+void MainWindow::loadGASettings(const QString& filename)
+{
+    qDebug() << "=== DEBUG: loadGASettings called with:" << filename;
+
+    std::ifstream file(filename.toStdString());
+    if (!file.is_open()) {
+        qDebug() << "ERROR: Could not open file!";
+        return;
+    }
+
+    qDebug() << "DEBUG: File opened successfully";
+
+    std::vector<std::string> s;
+    int lineCount = 0;
+    while (!file.eof())
+    {
+        s = aquiutils::getline(file, ' ');
+        lineCount++;
+        qDebug() << "DEBUG: Line" << lineCount << "- tokens:" << s.size();
+
+        if (s.size() > 1)
+        {
+            const std::string& key = s[0];
+            const std::string& value = s[1];
+
+            qDebug() << "DEBUG: Setting" << QString::fromStdString(key)
+                     << "=" << QString::fromStdString(value);
+
+            bool result = false;
+            if (key == "maxpop")
+                result = ga.SetProperty("maxpop", value);
+            else if (key == "ngen")
+                result = ga.SetProperty("ngen", value);
+            else if (key == "pcross")
+                result = ga.SetProperty("pcross", value);
+            else if (key == "pmute")
+                result = ga.SetProperty("pmute", value);
+            else if (key == "shakescale")
+                result = ga.SetProperty("shakescale", value);
+            else if (key == "shakescalered")
+                result = ga.SetProperty("shakescalered", value);
+            else if (key == "outputfile")
+                result = ga.SetProperty("outputfile", value);
+            else if (key == "initial_population")
+                result = ga.SetProperty("initial_population", value);
+            else if (key == "numthreads")
+                result = ga.SetProperty("numthreads", value);
+
+            qDebug() << "DEBUG: SetProperty returned:" << result;
+            if (!result) {
+                qDebug() << "ERROR:" << QString::fromStdString(ga.getLastError());
+            }
+        }
+    }
+
+    file.close();
+    qDebug() << "=== DEBUG: loadGASettings finished, total lines:" << lineCount;
+}
+void MainWindow::onRunDeterministicGA()
+{
+    // Check if model is loaded
+    if (gwaModel.Parameters().empty()) {
+        QMessageBox::warning(this, "No Model",
+                             "Please load a model file before running optimization.");
+        return;
+    }
+
+    // Check if we have a current file path
+    if (currentFilePath_.isEmpty()) {
+        QMessageBox::warning(this, "No File",
+                             "Please load or save a file first.");
+        return;
+    }
+
+    // ========================================================================
+    // Create output folder next to input file (no timestamp)
+    // ========================================================================
+
+    QFileInfo inputFileInfo(currentFilePath_);
+    QString inputDir = inputFileInfo.absolutePath();
+    QString baseName = inputFileInfo.completeBaseName();
+
+    // Create output folder (simple name, no timestamp)
+    QString outputFolderName = QString("%1_GA_output").arg(baseName);
+    QString outputFolderPath = inputDir + "/" + outputFolderName;
+
+    // Create the directory if it doesn't exist
+    QDir dir;
+    if (!dir.exists(outputFolderPath)) {
+        if (!dir.mkpath(outputFolderPath)) {
+            QMessageBox::critical(this, "Error",
+                                  QString("Failed to create output folder:\n%1").arg(outputFolderPath));
+            return;
+        }
+    }
+
+    // Set output paths for GWA
+    gwaModel.SetOutputPath(outputFolderPath.toStdString() + "/");
+
+    // DON'T create new GA - use existing one with settings from dialog
+    // ga = CGA<CGWA>(&gwaModel);  // <-- REMOVED THIS LINE
+
+    // Set GA output path and filename
+    ga.SetProperty("pathname", outputFolderPath.toStdString() + "/");
+    ga.SetProperty("outputfile", "ga_results.txt");
+
+    // Get number of generations (already set from GA Settings dialog)
+    int numGenerations = ga.getNumGenerations();
+
+    // ========================================================================
+    // Create progress window
+    // ========================================================================
+
+    progressWindow_ = new ProgressWindow(this, "GA Optimization");
+    progressWindow_->setProgressLabel("Generation Progress:");
+    progressWindow_->setFitnessChartTitle("Best Fitness per Generation");
+    progressWindow_->setFitnessChartVisible(true);
+    progressWindow_->setMCMCChartVisible(false);
+    progressWindow_->setSecondaryProgressVisible(true);
+    progressWindow_->setSecondaryProgressLabel("Within generation:");
+
+    // Set X-axis range to number of generations
+    progressWindow_->setFitnessXRange(0, numGenerations);
+
+    // Set the progress window in GA
+    ga.SetProgressWindow(progressWindow_);
+
+    // Show window
+    progressWindow_->show();
+    progressWindow_->setStatus("Initializing GA...");
+    progressWindow_->appendLog("Starting Genetic Algorithm Optimization");
+    progressWindow_->appendLog(QString("Input file: %1").arg(inputFileInfo.fileName()));
+    progressWindow_->appendLog(QString("Output folder: %1").arg(outputFolderName));
+    progressWindow_->appendLog(QString("Generations: %1").arg(numGenerations));
+    progressWindow_->appendLog(QString("Population size: %1").arg(ga.getPopulationSize()));
+    progressWindow_->appendLog("");
+
+    // Process events to show window
+    QApplication::processEvents();
+
+    try {
+        // Initialize GA
+        ga.initFromModel(&gwaModel);
+        ga.initialize();
+
+        progressWindow_->setStatus("Running optimization...");
+        progressWindow_->appendLog("Starting generation loop...");
+        QApplication::processEvents();
+
+        // Run optimization - progress updates happen automatically in GA
+        int bestIndex = ga.optimize();
+
+        CGWA* bestModel = ga.getBestModel();
+        if (bestModel != nullptr) {
+            progressWindow_->appendLog("");
+            progressWindow_->appendLog("=== Updating Model Parameters ===");
+
+            // Copy parameter values from best model to main model
+            Parameter_Set& mainParams = gwaModel.Parameters();
+            Parameter_Set& bestParams = bestModel->Parameters();
+
+            for (size_t i = 0; i < mainParams.size() && i < bestParams.size(); ++i) {
+                double newValue = bestParams[i]->GetValue();
+                mainParams[i]->SetValue(newValue);
+
+                progressWindow_->appendLog(QString("  Updated %1 = %2")
+                                               .arg(QString::fromStdString(mainParams[i]->GetName()), -30)
+                                               .arg(newValue, 0, 'e', 6));
+            }
+
+            progressWindow_->appendLog("Model parameters updated with optimized values.");
+        }
+
+        // Get results
+        const std::vector<double>& finalParams = ga.getFinalParams();
+        double bestFitness = ga.getMaxFitness();
+        const auto& paramNames = ga.getParamNames();
+
+        // Update progress window with final results
+        progressWindow_->setProgress(1.0);
+        progressWindow_->setStatus("Optimization Complete!");
+        progressWindow_->appendLog("");
+        progressWindow_->appendLog("=== Optimization Complete ===");
+        progressWindow_->appendLog(QString("Best fitness: %1").arg(bestFitness, 0, 'e', 6));
+        progressWindow_->appendLog(QString("Results saved to: %1").arg(outputFolderPath));
+        progressWindow_->appendLog("");
+        progressWindow_->appendLog("Optimized parameter values:");
+
+        for (size_t i = 0; i < finalParams.size() && i < paramNames.size(); ++i) {
+            progressWindow_->appendLog(QString("  %1 = %2")
+                                           .arg(QString::fromStdString(paramNames[i]), -30)
+                                           .arg(finalParams[i], 0, 'e', 6));
+        }
+
+        progressWindow_->setComplete("Optimization Complete!");
+
+        // Update status bar
+        statusBar()->showMessage(
+            QString("GA Complete: Best Fitness = %1 | Output: %2")
+                .arg(bestFitness, 0, 'e', 6)
+                .arg(outputFolderName),
+            10000
+            );
+
+        // Show results dialog
+        QString resultMsg = QString("Optimization Complete!\n\n");
+        resultMsg += QString("Best Fitness: %1\n\n").arg(bestFitness, 0, 'e', 6);
+        resultMsg += QString("Optimized %1 parameters over %2 generations\n")
+                         .arg(paramNames.size())
+                         .arg(numGenerations);
+        resultMsg += QString("\nResults saved to:\n%1\n\n").arg(outputFolderPath);
+        resultMsg += "See progress window for detailed results.";
+
+        QMessageBox::information(this, "GA Complete", resultMsg);
+
+    } catch (const std::exception& e) {
+        if (progressWindow_) {
+            progressWindow_->appendLog(QString("ERROR: %1").arg(e.what()));
+            progressWindow_->setComplete("Optimization Failed!");
+        }
+
+        QMessageBox::critical(this, "Optimization Error",
+                              QString("Error during optimization:\n%1").arg(e.what()));
+    }
+
+    // Keep window open until user closes it
+    if (progressWindow_) {
+        progressWindow_->exec();
+        delete progressWindow_;
+        progressWindow_ = nullptr;
+    }
+}
+
+
+

@@ -6,6 +6,7 @@
 #include "GWA.h"
 #include "GA.h"
 #include "MCMC.h"
+#include "ProgressWindow.h"
 
 
 QT_BEGIN_NAMESPACE
@@ -39,6 +40,7 @@ private slots:
     void onObservationContextAction(const QString& obsName, int index, const QString& actionType);
     void onRecentFileTriggered();
     void onGASettingsTriggered();
+    void onRunDeterministicGA();
 
 private:
     Ui::MainWindow *ui;
@@ -68,6 +70,12 @@ private:
     void saveRecentFiles(const QStringList& files) const;
     CGA<CGWA> ga;
     CMCMC<CGWA> mcmc;
+
+    QString getGASettingsFilename(const QString& projectFilename);
+    void saveGASettings(const QString& filename);
+    void loadGASettings(const QString& filename);
+    ProgressWindow* progressWindow_;
+
 };
 
 #endif // MAINWINDOW_H

@@ -291,32 +291,30 @@ QGroupBox* GASettingsDialog::createFilePathsGroup()
 
 void GASettingsDialog::loadSettings()
 {
-    // Get parameters from GA object
-    // Note: You'll need to add getter methods to CGA class for these
-    // For now, we'll use default values - you'll need to add accessors to GA.h
-
-    // Population parameters
+    // Get actual parameters from GA object
     m_maxPopSpinBox->setValue(m_ga->getPopulationSize());
-    m_nGenSpinBox->setValue(100);  // Default - add getter to CGA
-    m_numThreadsSpinBox->setValue(16);
+    m_nGenSpinBox->setValue(m_ga->getNumGenerations());
+    m_numThreadsSpinBox->setValue(m_ga->getNumThreads());
 
-    // Genetic operators - you'll need to add getters to CGA
-    m_pCrossSpinBox->setValue(1.0);
-    m_pMutateSpinBox->setValue(0.02);
-    m_crossoverTypeCombo->setCurrentIndex(0);
-    m_rcgaCheckBox->setChecked(false);
+    // Genetic operators
+    m_pCrossSpinBox->setValue(m_ga->getCrossoverProb());
+    m_pMutateSpinBox->setValue(m_ga->getMutationProb());
+
+    // Crossover type (1 or 2) -> index (0 or 1)
+    m_crossoverTypeCombo->setCurrentIndex(m_ga->getCrossoverType() - 1);
+    m_rcgaCheckBox->setChecked(m_ga->isRCGA());
 
     // Shake operator
-    m_shakeScaleSpinBox->setValue(0.05);
-    m_shakeScaleRedSpinBox->setValue(0.75);
+    m_shakeScaleSpinBox->setValue(m_ga->getShakeScale());
+    m_shakeScaleRedSpinBox->setValue(m_ga->getShakeScaleRed());
 
     // Fitness
-    m_fitnessExpSpinBox->setValue(1.0);
+    m_fitnessExpSpinBox->setValue(m_ga->getFitnessExponent());
 
     // Enhancements
-    m_numEnhancementsSpinBox->setValue(0);
+    m_numEnhancementsSpinBox->setValue(m_ga->getNumEnhancements());
 
-    // File paths - default empty
+    // File paths - these would need getters too if you want to load them
     m_initialPopEdit->clear();
     m_outputPathEdit->clear();
     m_inputFileEdit->clear();

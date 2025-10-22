@@ -18,6 +18,7 @@ CONFIG += c++17
 DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += Q_GUI_SUPPORT
 DEFINES += Q_JSON_SUPPORT
+DEFINES += Q_GUI_SUPPORT
 
 DEFINES += GSL
 DEFINES += _arma
@@ -69,6 +70,7 @@ SOURCES += \
     InverseModeling/src/GA/GADistribution.cpp \
     InverseModeling/src/GA/Individual.cpp \
     LIDconfig.cpp \
+    ProgressWindow.cpp \
     Tracer.cpp \
     Utilities/Distribution.cpp \
     Utilities/Matrix.cpp \
@@ -114,6 +116,7 @@ HEADERS += \
     InverseModeling/observation.h \
     InverseModeling/parameter.h \
     InverseModeling/parameter_set.h \
+    ProgressWindow.h \
     Tracer.h \
     Utilities/Distribution.h \
     Utilities/Matrix.h \
