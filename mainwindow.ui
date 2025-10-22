@@ -28,17 +28,9 @@
      <string>File</string>
     </property>
     <addaction name="actionOpen"/>
+    <addaction name="actionRecent_Projects"/>
     <addaction name="actionSave"/>
     <addaction name="actionSave_As"/>
-   </widget>
-   <widget class="QMenu" name="menuData">
-    <property name="title">
-     <string>Data</string>
-    </property>
-    <addaction name="actionWells"/>
-    <addaction name="actionTracers"/>
-    <addaction name="actionParameters"/>
-    <addaction name="actionObservations"/>
    </widget>
    <widget class="QMenu" name="menuParameter_Estimation">
     <property name="title">
@@ -54,8 +46,16 @@
     </property>
     <addaction name="actionAbout"/>
    </widget>
+   <widget class="QMenu" name="menuSettings">
+    <property name="title">
+     <string>Settings</string>
+    </property>
+    <addaction name="actionGenetic_Algorithm_Settings"/>
+    <addaction name="actionMCMC_Settings"/>
+    <addaction name="actionLevenberg_Marquardt_Settings"/>
+   </widget>
    <addaction name="menuFile"/>
-   <addaction name="menuData"/>
+   <addaction name="menuSettings"/>
    <addaction name="menuParameter_Estimation"/>
    <addaction name="menuAbout"/>
   </widget>
@@ -113,6 +113,26 @@
   <action name="actionSave_As">
    <property name="text">
     <string>Save As</string>
+   </property>
+  </action>
+  <action name="actionRecent_Projects">
+   <property name="text">
+    <string>Recent Projects</string>
+   </property>
+  </action>
+  <action name="actionGenetic_Algorithm_Settings">
+   <property name="text">
+    <string>Genetic Algorithm Settings</string>
+   </property>
+  </action>
+  <action name="actionMCMC_Settings">
+   <property name="text">
+    <string>MCMC Settings</string>
+   </property>
+  </action>
+  <action name="actionLevenberg_Marquardt_Settings">
+   <property name="text">
+    <string>Levenberg-Marquardt Settings</string>
    </property>
   </action>
  </widget>

@@ -1484,12 +1484,8 @@ TimeSeries<double> CGWA::calculateSingleObservation(size_t obs_index)
         double time = observed.getTime(j);
         double conc = tracer.calculateConcentration(
             time,
-            well.getYoungAgeDistribution(),
-            well.getFractionOld(),
-            well.getVzDelay(),
-            settings_.fixed_old_tracer,
-            well.getAgeOld(),
-            well.getFractionMineral()
+            &well,
+            settings_.fixed_old_tracer
             );
 
         modeled.append(time, conc);

@@ -13,6 +13,9 @@
 #include "parameterdialog.h"
 #include "observationdialog.h"
 #include "chartwindow.h"
+#include <QStandardPaths>
+#include "GASettingsDialog.h"
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -31,6 +34,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionOpen, &QAction::triggered, this, &MainWindow::onOpenFile);
     connect(ui->actionSave, &QAction::triggered, this, &MainWindow::onSaveFile);
     connect(ui->actionSave_As, &QAction::triggered, this, &MainWindow::onSaveAsFile);
+    connect(ui->actionGenetic_Algorithm_Settings, &QAction::triggered, this, &MainWindow::onGASettingsTriggered);
+    recentFilesMenu = new QMenu("Recent Projects", this);
+    ui->actionRecent_Projects->setMenu(recentFilesMenu);
+    updateRecentFilesMenu();
 
 }
 
@@ -161,7 +168,7 @@ void MainWindow::onOpenFile()
     bool success = gwaModel.loadFromFile(fileName.toStdString());
 
     if (success) {
-        currentFilePath = fileName;
+        currentFilePath_ = fileName;
         statusBar()->showMessage(tr("Loaded: %1").arg(fileName), 3000);
 
         updateAllWidgets();
@@ -173,12 +180,13 @@ void MainWindow::onOpenFile()
             tr("Failed to load configuration file:\n%1").arg(fileName)
             );
     }
+    addToRecentFiles(currentFilePath_);
 }
 
 void MainWindow::onSaveFile()
 {
     // If we don't have a current file, use Save As
-    if (currentFilePath.isEmpty()) {
+    if (currentFilePath_.isEmpty()) {
         onSaveAsFile();
         return;
     }
@@ -190,17 +198,18 @@ void MainWindow::onSaveFile()
     // - Observations
 
     // Save to file
-    bool success = gwaModel.exportToFile(currentFilePath.toStdString());
+    bool success = gwaModel.exportToFile(currentFilePath_.toStdString());
 
     if (success) {
-        statusBar()->showMessage(tr("Saved: %1").arg(currentFilePath), 3000);
+        statusBar()->showMessage(tr("Saved: %1").arg(currentFilePath_), 3000);
     } else {
         QMessageBox::critical(
             this,
             tr("Error Saving File"),
-            tr("Failed to save configuration file:\n%1").arg(currentFilePath)
+            tr("Failed to save configuration file:\n%1").arg(currentFilePath_)
             );
     }
+    addToRecentFiles(currentFilePath_);
 }
 
 void MainWindow::onSaveAsFile()
@@ -209,7 +218,7 @@ void MainWindow::onSaveAsFile()
     QString fileName = QFileDialog::getSaveFileName(
         this,
         tr("Save GWA Configuration File As"),
-        currentFilePath.isEmpty() ? QString() : currentFilePath,
+        currentFilePath_.isEmpty() ? QString() : currentFilePath_,
         tr("GWA Files (*.gwa);;Text Files (*.txt);;All Files (*)")
         );
 
@@ -227,8 +236,8 @@ void MainWindow::onSaveAsFile()
     bool success = gwaModel.exportToFile(fileName.toStdString());
 
     if (success) {
-        currentFilePath = fileName;  // Update current file path
-        statusBar()->showMessage(tr("Saved: %1").arg(currentFilePath), 3000);
+        currentFilePath_ = fileName;  // Update current file path
+        statusBar()->showMessage(tr("Saved: %1").arg(currentFilePath_), 3000);
     } else {
         QMessageBox::critical(
             this,
@@ -236,6 +245,7 @@ void MainWindow::onSaveAsFile()
             tr("Failed to save configuration file:\n%1").arg(fileName)
             );
     }
+    addToRecentFiles(currentFilePath_);
 }
 
 void MainWindow::onEditWell(const QString& wellName, int index)
@@ -720,4 +730,112 @@ void MainWindow::onPlotObservation(const QString& obsName, int index)
         QMessageBox::critical(this, tr("Error"),
                               tr("Failed to plot observation:\n%1").arg(e.what()));
     }
+}
+
+QString MainWindow::getRecentFilesPath() const
+{
+    QString documentsPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    QDir dir(documentsPath);
+    if (!dir.exists("ChronoGW")) {
+        dir.mkdir("ChronoGW");
+    }
+    return documentsPath + "/ChronoGW/recent_files.txt";
+}
+
+QStringList MainWindow::loadRecentFiles() const
+{
+    QStringList files;
+    QFile file(getRecentFilesPath());
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&file);
+        while (!in.atEnd()) {
+            QString line = in.readLine().trimmed();
+            if (!line.isEmpty() && QFile::exists(line)) {
+                files.append(line);
+            }
+        }
+        file.close();
+    }
+    return files;
+}
+
+void MainWindow::saveRecentFiles(const QStringList& files) const
+{
+    QFile file(getRecentFilesPath());
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&file);
+        for (const QString& filePath : files) {
+            out << filePath << "\n";
+        }
+        file.close();
+    }
+}
+
+void MainWindow::addToRecentFiles(const QString& filePath)
+{
+    QStringList files = loadRecentFiles();
+
+    // Remove if already exists
+    files.removeAll(filePath);
+
+    // Add to front
+    files.prepend(filePath);
+
+    // Keep only MaxRecentFiles
+    while (files.size() > MaxRecentFiles) {
+        files.removeLast();
+    }
+
+    saveRecentFiles(files);
+    updateRecentFilesMenu();
+}
+
+void MainWindow::updateRecentFilesMenu()
+{
+    recentFilesMenu->clear();
+
+    QStringList files = loadRecentFiles();
+
+    if (files.isEmpty()) {
+        QAction* noFilesAction = recentFilesMenu->addAction("No Recent Files");
+        noFilesAction->setEnabled(false);
+        return;
+    }
+
+    for (const QString& filePath : files) {
+        QAction* action = recentFilesMenu->addAction(QFileInfo(filePath).fileName());
+        action->setData(filePath);
+        action->setToolTip(filePath);
+        connect(action, &QAction::triggered, this, &MainWindow::onRecentFileTriggered);
+    }
+}
+
+void MainWindow::onRecentFileTriggered()
+{
+    QAction* action = qobject_cast<QAction*>(sender());
+    if (action) {
+        QString filePath = action->data().toString();
+        if (QFile::exists(filePath)) {
+            currentFilePath_ = filePath;
+            // Load the file using your existing load logic
+            gwaModel.loadFromFile(filePath.toStdString());
+            updateAllWidgets();
+            setModified(false);
+            addToRecentFiles(filePath);
+        } else {
+            QMessageBox::warning(this, "File Not Found",
+                                 "The file no longer exists:\n" + filePath);
+            // Remove from recent files
+            QStringList files = loadRecentFiles();
+            files.removeAll(filePath);
+            saveRecentFiles(files);
+            updateRecentFilesMenu();
+        }
+    }
+}
+
+void MainWindow::onGASettingsTriggered()
+{
+    GASettingsDialog dialog(&ga, this);
+    dialog.exec();
 }

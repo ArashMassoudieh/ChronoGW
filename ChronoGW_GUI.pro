@@ -58,6 +58,7 @@ macx {
 #-------------------------------------------------
 
 SOURCES += \
+    GASettingsDialog.cpp \
     GWA.cpp \
     IconListWidget.cpp \
     InverseModeling/observation.cpp \
@@ -81,7 +82,9 @@ SOURCES += \
     chartviewer.cpp \
     chartwindow.cpp \
     constantortimeserieswidget.cpp \
+    lmsettingsdialog.cpp \
     main_gui.cpp \
+    mcmcsettingdialog.cpp \
     observationdialog.cpp \
     parameterdialog.cpp \
     parametervaluewidget.cpp \
@@ -95,6 +98,7 @@ SOURCES += \
 
 HEADERS += \
     GA.h \
+    GASettingsDialog.h \
     GWA.h \
     IconListWidget.h \
     InverseModeling/include/GA/Binary.h \
@@ -126,6 +130,8 @@ HEADERS += \
     chartviewer.h \
     chartwindow.h \
     constantortimeserieswidget.h \
+    lmsettingsdialog.h \
+    mcmcsettingdialog.h \
     observationdialog.h \
     parameterdialog.h \
     parametervaluewidget.h \

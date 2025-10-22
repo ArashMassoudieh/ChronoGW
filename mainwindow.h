@@ -4,6 +4,9 @@
 #include <QMainWindow>
 #include "IconListWidget.h"
 #include "GWA.h"
+#include "GA.h"
+#include "MCMC.h"
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -34,9 +37,11 @@ private slots:
     void onModelModified();
     void onPlotObservation(const QString& obsName, int index);
     void onObservationContextAction(const QString& obsName, int index, const QString& actionType);
+    void onRecentFileTriggered();
+    void onGASettingsTriggered();
+
 private:
     Ui::MainWindow *ui;
-    QString currentFilePath;
     CGWA gwaModel;
 
     IconListWidget* wellsWidget;
@@ -51,6 +56,18 @@ private:
 
     void setModified(bool modified);
     void updateWindowTitle();
+
+    static const int MaxRecentFiles = 10;
+    QMenu* recentFilesMenu;
+    QList<QAction*> recentFileActions;
+
+    void updateRecentFilesMenu();
+    void addToRecentFiles(const QString& filePath);
+    QString getRecentFilesPath() const;
+    QStringList loadRecentFiles() const;
+    void saveRecentFiles(const QStringList& files) const;
+    CGA<CGWA> ga;
+    CMCMC<CGWA> mcmc;
 };
 
 #endif // MAINWINDOW_H
