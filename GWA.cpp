@@ -370,14 +370,13 @@ void CGWA::loadTracers()
 void CGWA::loadWells()
 {
     wells_.clear();
-
     for (size_t i = 0; i < config_data_.keywords.size(); ++i) {
         if (aquiutils::tolower(config_data_.keywords[i]) == "well") {
             CWell well;
             well.setName(config_data_.values[i]);
             well.setVzDelay(0.0);
 
-            // Find distribution type
+            // Find distribution type first
             for (size_t j = 0; j < config_data_.param_names[i].size(); ++j) {
                 if (aquiutils::tolower(config_data_.param_names[i][j]) == "distribution") {
                     well.setDistributionType(config_data_.param_values[i][j]);
@@ -388,18 +387,29 @@ void CGWA::loadWells()
             // Parse well properties
             for (size_t j = 0; j < config_data_.param_names[i].size(); ++j) {
                 std::string pname = config_data_.param_names[i][j];
-                double pval = std::atof(config_data_.param_values[i][j].c_str());
-
-                well.setParameter(pname, pval);
-
-                // Link to parameter if specified
+                std::string pvalue_str = config_data_.param_values[i][j];
                 const std::string& est_param = config_data_.est_param_names[i][j];
+
+                double pval;
+
+                // If linked to a parameter, get the value from that parameter
                 if (!est_param.empty()) {
                     int param_idx = findParameter(est_param);
                     if (param_idx >= 0) {
+                        pval = parameters_[param_idx]->GetValue();
+                        // Link this property to the parameter
                         parameters_[param_idx]->AddLocation(well.getName(), pname, "well");
+                    } else {
+                        // Parameter not found, use the string value as fallback
+                        pval = std::atof(pvalue_str.c_str());
                     }
+                } else {
+                    // Direct value
+                    pval = std::atof(pvalue_str.c_str());
                 }
+
+                // Set the parameter value in the well
+                well.setParameter(pname, pval);
             }
 
             wells_.push_back(well);
@@ -996,13 +1006,20 @@ bool CGWA::exportToFile(const std::string& filename) const
         }
 
         // Write distribution parameters
-        for (int i = 0; i < 10; ++i) {
+        const std::vector<double>& distParams = well.getParameters();
+        for (size_t i = 0; i < distParams.size(); ++i) {
+            if (!first) file << ";";
+
             std::string key = "param[" + std::to_string(i) + "]";
+
+            // Check if this parameter is linked to a calibration parameter
             if (well_params.find(key) != well_params.end()) {
-                if (!first) file << ";";
                 file << key << "=" << well_params[key];
-                first = false;
+            } else {
+                // Use the actual value
+                file << key << "=" << distParams[i];
             }
+            first = false;
         }
 
         if (!first) file << ";";

@@ -1,0 +1,11 @@
+path=
+outpath=
+
+well=Well, {param[0]=5.0000000000;distribution=Exponential}
+
+tracer=Dummy, {decay=10.0000000000;input=/home/arash/Projects/ChronoGW/constant_input.txt}
+
+observed=Obs, {well=Well; tracer=Dummy; std_param=STD_obs; error_structure=normal; observed_data=/home/arash/Projects/ChronoGW/dummy_observed.txt; count_max=1}
+
+
+parameter=STD_obs, {low=0.1000000000;high=10.0000000000; prior_distribution=log-normal; value=1.0000000000}

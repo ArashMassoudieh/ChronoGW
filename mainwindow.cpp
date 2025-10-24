@@ -209,7 +209,7 @@ void MainWindow::onOpenFile()
             tr("Failed to load configuration file:\n%1").arg(fileName)
             );
     }
-
+    setModified(false);
     addToRecentFiles(currentFilePath_);
 }
 
@@ -244,6 +244,7 @@ void MainWindow::onSaveFile()
             tr("Failed to save configuration file:\n%1").arg(currentFilePath_)
             );
     }
+    setModified(false);
 
     addToRecentFiles(currentFilePath_);
 }
@@ -293,7 +294,7 @@ void MainWindow::onSaveAsFile()
             tr("Failed to save configuration file:\n%1").arg(fileName)
             );
     }
-
+    setModified(false);
     addToRecentFiles(currentFilePath_);
 }
 
