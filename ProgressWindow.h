@@ -26,18 +26,22 @@
 #include <QVector>
 #include <QtCharts/QAreaSeries>
 
-    /**
+/**
  * @class ProgressWindow
- * @brief Generic progress window for optimization and MCMC algorithms
+ * @brief Generic progress window with configurable charts and progress bars
  *
  * Features:
- * - Two progress bars (main and optional secondary)
- * - Two charts (fitness for GA, posterior for MCMC)
+ * - Up to two configurable progress bars
+ * - Up to two configurable charts with customizable axes
  * - Real-time status updates
  * - Scrolling log area
+ * - Optional information panel
  * - Pause/Resume/Cancel buttons
+ *
+ * @note All chart and progress bar methods use generic names (Primary/Secondary)
+ *       to allow flexibility for different use cases (GA, MCMC, etc.)
  */
-    class ProgressWindow : public QDialog
+class ProgressWindow : public QDialog
 {
     Q_OBJECT
 
@@ -45,7 +49,7 @@ public:
     /**
      * @brief Constructor
      * @param parent Parent widget
-     * @param title Window title (e.g., "GA Optimization" or "MCMC Sampling")
+     * @param title Window title
      */
     explicit ProgressWindow(QWidget* parent = nullptr, const QString& title = "Progress");
 
@@ -59,34 +63,34 @@ public:
     // ========================================================================
 
     /**
-     * @brief Set main progress (0.0 to 1.0)
+     * @brief Set primary progress (0.0 to 1.0)
      * @param progress Progress value between 0 and 1
      */
-    void setProgress(double progress);
+    void SetProgress(double progress);
 
     /**
      * @brief Set secondary progress (0.0 to 1.0)
      * @param progress Progress value between 0 and 1
      */
-    void setSecondaryProgress(double progress);
+    void SetSecondaryProgress(double progress);
 
     /**
      * @brief Show or hide the secondary progress bar
      * @param visible True to show, false to hide
      */
-    void setSecondaryProgressVisible(bool visible);
+    void SetSecondaryProgressVisible(bool visible);
 
     /**
-     * @brief Set label for main progress bar
-     * @param label Text label (e.g., "Generation Progress")
+     * @brief Set label for primary progress bar
+     * @param label Text label
      */
-    void setProgressLabel(const QString& label);
+    void SetProgressLabel(const QString& label);
 
     /**
      * @brief Set label for secondary progress bar
-     * @param label Text label (e.g., "Enhancement Progress")
+     * @param label Text label
      */
-    void setSecondaryProgressLabel(const QString& label);
+    void SetSecondaryProgressLabel(const QString& label);
 
     // ========================================================================
     // Status and Logging Methods
@@ -96,18 +100,18 @@ public:
      * @brief Update status message
      * @param status Status text to display
      */
-    void setStatus(const QString& status);
+    void SetStatus(const QString& status);
 
     /**
      * @brief Append message to log
      * @param message Message to append
      */
-    void appendLog(const QString& message);
+    void AppendLog(const QString& message);
 
     /**
      * @brief Clear the log
      */
-    void clearLog();
+    void ClearLog();
 
     // ========================================================================
     // Information Panel Methods
@@ -117,112 +121,162 @@ public:
      * @brief Append text to information panel
      * @param text Text to append
      */
-    void appendInfo(const QString& text);
+    void AppendInfo(const QString& text);
 
     /**
      * @brief Set text in information panel (replaces all content)
      * @param text Text to display
      */
-    void setInfoText(const QString& text);
+    void SetInfoText(const QString& text);
 
     /**
      * @brief Clear information panel
      */
-    void clearInfo();
+    void ClearInfo();
 
     /**
      * @brief Show or hide information panel
      * @param visible True to show, false to hide
      */
-    void setInfoPanelVisible(bool visible);
+    void SetInfoPanelVisible(bool visible);
 
     /**
      * @brief Set information panel label
      * @param label Label text
      */
-    void setInfoPanelLabel(const QString& label);
+    void SetInfoPanelLabel(const QString& label);
 
     // ========================================================================
-    // Chart Methods - Fitness (for GA)
+    // Primary Chart Methods
     // ========================================================================
 
     /**
-     * @brief Add data point to fitness chart
-     * @param generation Generation number (x-axis)
-     * @param fitness Best fitness value (y-axis)
+     * @brief Add data point to primary chart
+     * @param x X-axis value
+     * @param y Y-axis value
      */
-    void addFitnessPoint(int generation, double fitness);
+    void AddPrimaryChartPoint(double x, double y);
 
     /**
-     * @brief Clear all fitness data
+     * @brief Clear all primary chart data
      */
-    void clearFitnessData();
+    void ClearPrimaryChartData();
 
     /**
-     * @brief Set Y-axis range for fitness chart
+     * @brief Set Y-axis range for primary chart
      * @param min Minimum value
      * @param max Maximum value
      */
-    void setFitnessYRange(double min, double max);
+    void SetPrimaryChartYRange(double min, double max);
 
     /**
-     * @brief Enable auto-scaling for fitness Y-axis
-     * @param enabled True to enable auto-scaling
-     */
-    void setFitnessAutoScale(bool enabled);
-
-    /**
-     * @brief Show or hide fitness chart
-     * @param visible True to show, false to hide
-     */
-    void setFitnessChartVisible(bool visible);
-
-    /**
-     * @brief Set fitness chart title
-     * @param title Chart title
-     */
-    void setFitnessChartTitle(const QString& title);
-
-    // ========================================================================
-    // Chart Methods - MCMC (for posterior distribution)
-    // ========================================================================
-
-    /**
-     * @brief Add data point to MCMC chart
-     * @param sample Sample number (x-axis)
-     * @param logPosterior Log posterior value (y-axis)
-     */
-    void addMCMCPoint(int sample, double logPosterior);
-
-    /**
-     * @brief Clear all MCMC data
-     */
-    void clearMCMCData();
-
-    /**
-     * @brief Set Y-axis range for MCMC chart
+     * @brief Set X-axis range for primary chart
      * @param min Minimum value
      * @param max Maximum value
      */
-    void setMCMCYRange(double min, double max);
+    void SetPrimaryChartXRange(double min, double max);
 
     /**
-     * @brief Enable auto-scaling for MCMC Y-axis
+     * @brief Enable auto-scaling for primary chart Y-axis
      * @param enabled True to enable auto-scaling
      */
-    void setMCMCAutoScale(bool enabled);
+    void SetPrimaryChartAutoScale(bool enabled);
 
     /**
-     * @brief Show or hide MCMC chart
+     * @brief Show or hide primary chart
      * @param visible True to show, false to hide
      */
-    void setMCMCChartVisible(bool visible);
+    void SetPrimaryChartVisible(bool visible);
 
     /**
-     * @brief Set MCMC chart title
+     * @brief Set primary chart title
      * @param title Chart title
      */
-    void setMCMCChartTitle(const QString& title);
+    void SetPrimaryChartTitle(const QString& title);
+
+    /**
+     * @brief Set X-axis title for primary chart
+     * @param title X-axis title
+     */
+    void SetPrimaryChartXAxisTitle(const QString& title);
+
+    /**
+     * @brief Set Y-axis title for primary chart
+     * @param title Y-axis title
+     */
+    void SetPrimaryChartYAxisTitle(const QString& title);
+
+    /**
+     * @brief Set line color for primary chart
+     * @param color Line color
+     */
+    void SetPrimaryChartColor(const QColor& color);
+
+    // ========================================================================
+    // Secondary Chart Methods
+    // ========================================================================
+
+    /**
+     * @brief Add data point to secondary chart
+     * @param x X-axis value
+     * @param y Y-axis value
+     */
+    void AddSecondaryChartPoint(double x, double y);
+
+    /**
+     * @brief Clear all secondary chart data
+     */
+    void ClearSecondaryChartData();
+
+    /**
+     * @brief Set Y-axis range for secondary chart
+     * @param min Minimum value
+     * @param max Maximum value
+     */
+    void SetSecondaryChartYRange(double min, double max);
+
+    /**
+     * @brief Set X-axis range for secondary chart
+     * @param min Minimum value
+     * @param max Maximum value
+     */
+    void SetSecondaryChartXRange(double min, double max);
+
+    /**
+     * @brief Enable auto-scaling for secondary chart Y-axis
+     * @param enabled True to enable auto-scaling
+     */
+    void SetSecondaryChartAutoScale(bool enabled);
+
+    /**
+     * @brief Show or hide secondary chart
+     * @param visible True to show, false to hide
+     */
+    void SetSecondaryChartVisible(bool visible);
+
+    /**
+     * @brief Set secondary chart title
+     * @param title Chart title
+     */
+    void SetSecondaryChartTitle(const QString& title);
+
+    /**
+     * @brief Set X-axis title for secondary chart
+     * @param title X-axis title
+     */
+    void SetSecondaryChartXAxisTitle(const QString& title);
+
+    /**
+     * @brief Set Y-axis title for secondary chart
+     * @param title Y-axis title
+     */
+    void SetSecondaryChartYAxisTitle(const QString& title);
+
+    /**
+     * @brief Set line color for secondary chart
+     * @param color Line color
+     */
+    void SetSecondaryChartColor(const QColor& color);
 
     // ========================================================================
     // Control Methods
@@ -232,37 +286,30 @@ public:
      * @brief Check if user requested pause
      * @return True if pause requested
      */
-    bool isPauseRequested() const { return pauseRequested_; }
+    bool IsPauseRequested() const { return pauseRequested_; }
 
     /**
      * @brief Check if user requested cancel
      * @return True if cancel requested
      */
-    bool isCancelRequested() const { return cancelRequested_; }
+    bool IsCancelRequested() const { return cancelRequested_; }
 
     /**
      * @brief Reset pause request (after handling)
      */
-    void resetPauseRequest() { pauseRequested_ = false; }
+    void ResetPauseRequest() { pauseRequested_ = false; }
 
     /**
      * @brief Enable or disable pause button
      * @param enabled True to enable
      */
-    void setPauseEnabled(bool enabled);
+    void SetPauseEnabled(bool enabled);
 
     /**
      * @brief Show completion message
      * @param message Completion message
      */
-    void setComplete(const QString& message = "Complete!");
-
-    /**
-     * @brief Set X-axis range for fitness chart
-     * @param min Minimum value
-     * @param max Maximum value
-     */
-    void setFitnessXRange(double min, double max);
+    void SetComplete(const QString& message = "Complete!");
 
 signals:
     /**
@@ -286,16 +333,16 @@ private slots:
 
 private:
     void setupUI();
-    void createFitnessChart();
-    void createMCMCChart();
-    void updateFitnessChart();
-    void updateMCMCChart();
+    void createPrimaryChart();
+    void createSecondaryChart();
+    void updatePrimaryChart();
+    void updateSecondaryChart();
 
     // UI Components
     QLabel* statusLabel_;
-    QLabel* progressLabel_;
+    QLabel* primaryProgressLabel_;
     QLabel* secondaryProgressLabel_;
-    QProgressBar* mainProgressBar_;
+    QProgressBar* primaryProgressBar_;
     QProgressBar* secondaryProgressBar_;
     QTextEdit* logTextEdit_;
 
@@ -306,26 +353,25 @@ private:
     QPushButton* pauseResumeButton_;
     QPushButton* cancelButton_;
 
-    QChart* fitnessChart_;
-    QChartView* fitnessChartView_;
-    QLineSeries* fitnessSeries_;
-    QAreaSeries* fitnessAreaSeries_;  // ADD THIS
-    QValueAxis* fitnessAxisX_;
-    QValueAxis* fitnessAxisY_;
-    bool fitnessAutoScale_;
+    // Primary Chart
+    QChart* primaryChart_;
+    QChartView* primaryChartView_;
+    QLineSeries* primarySeries_;
+    QAreaSeries* primaryAreaSeries_;
+    QValueAxis* primaryAxisX_;
+    QValueAxis* primaryAxisY_;
+    bool primaryAutoScale_;
+    QVector<QPointF> primaryData_;
 
-    // MCMC Chart (for posterior)
-    QChart* mcmcChart_;
-    QChartView* mcmcChartView_;
-    QLineSeries* mcmcSeries_;
-    QAreaSeries* mcmcAreaSeries_;  // ADD THIS
-    QValueAxis* mcmcAxisX_;
-    QValueAxis* mcmcAxisY_;
-    bool mcmcAutoScale_;
-
-    // Data storage
-    QVector<QPointF> fitnessData_;
-    QVector<QPointF> mcmcData_;
+    // Secondary Chart
+    QChart* secondaryChart_;
+    QChartView* secondaryChartView_;
+    QLineSeries* secondarySeries_;
+    QAreaSeries* secondaryAreaSeries_;
+    QValueAxis* secondaryAxisX_;
+    QValueAxis* secondaryAxisY_;
+    bool secondaryAutoScale_;
+    QVector<QPointF> secondaryData_;
 
     // State
     bool pauseRequested_;

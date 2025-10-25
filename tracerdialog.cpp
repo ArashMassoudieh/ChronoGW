@@ -144,7 +144,7 @@ void TracerDialog::loadTracerData(const CTracer* tracer)
         inputWidget->setTimeSeries(input);
     }
 
-    // Update parameter widgets first
+    // Update parameter widgets AFTER finding current linkages
     updateParameterWidgets();
 
     // Set transport properties with parameter linkage check
@@ -252,7 +252,47 @@ void TracerDialog::onAccepted()
         return;
     }
 
+    // NEW: Remove parameter linkages that are no longer in parameter mode
+    if (tracer_ && gwa_) {
+        std::string tracerName = tracer_->getName();
+
+        // Check each property and remove linkage if now in value mode
+        if (!inputMultiplierWidget->isParameterMode()) {
+            removeParameterLinkage(tracerName, "input_multiplier");
+        }
+        if (!decayRateWidget->isParameterMode()) {
+            removeParameterLinkage(tracerName, "decay");
+        }
+        if (!retardationWidget->isParameterMode()) {
+            removeParameterLinkage(tracerName, "retard");
+        }
+        if (!oldWaterConcWidget->isParameterMode()) {
+            removeParameterLinkage(tracerName, "co");
+        }
+        if (!modernWaterConcWidget->isParameterMode()) {
+            removeParameterLinkage(tracerName, "cm");
+        }
+        if (!maxFractionMineralWidget->isParameterMode()) {
+            removeParameterLinkage(tracerName, "fm");
+        }
+    }
+
     accept();
+}
+
+void TracerDialog::removeParameterLinkage(const std::string& tracerName, const std::string& quantity)
+{
+    if (!gwa_) return;
+
+    // Find and remove the linkage from parameters
+    for (size_t i = 0; i < gwa_->getParameterCount(); ++i) {
+        Parameter* param = gwa_->getParameter(i);
+        if (!param) continue;
+
+        // Remove this tracer/quantity combination from the parameter
+        param->RemoveLocation(tracerName, quantity, "tracer");
+        param->RemoveLocation(tracerName, quantity, "1");  // Also try numeric type
+    }
 }
 
 CTracer TracerDialog::getTracer() const

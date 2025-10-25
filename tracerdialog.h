@@ -50,7 +50,7 @@ private:
     void loadTracerData(const CTracer* tracer);
     void updateParameterWidgets();
     QString findLinkedParameter(const std::string& tracerName, const std::string& quantity);
-
+    void removeParameterLinkage(const std::string& tracerName, const std::string& quantity);
     // Model reference
     CGWA* gwa_;
     CTracer* tracer_;

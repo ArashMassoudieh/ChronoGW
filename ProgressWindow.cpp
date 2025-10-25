@@ -18,8 +18,8 @@
 
 ProgressWindow::ProgressWindow(QWidget* parent, const QString& title)
     : QDialog(parent)
-    , fitnessAutoScale_(true)
-    , mcmcAutoScale_(true)
+    , primaryAutoScale_(true)
+    , secondaryAutoScale_(true)
     , pauseRequested_(false)
     , cancelRequested_(false)
     , isPaused_(false)
@@ -28,13 +28,13 @@ ProgressWindow::ProgressWindow(QWidget* parent, const QString& title)
     setMinimumSize(800, 600);
 
     setupUI();
-    createFitnessChart();
-    createMCMCChart();
+    createPrimaryChart();
+    createSecondaryChart();
 
-    // Default: Show fitness chart for GA, hide MCMC
-    setFitnessChartVisible(true);
-    setMCMCChartVisible(false);
-    setSecondaryProgressVisible(false);
+    // Default: Show primary chart, hide secondary
+    SetPrimaryChartVisible(true);
+    SetSecondaryChartVisible(false);
+    SetSecondaryProgressVisible(false);
 }
 
 ProgressWindow::~ProgressWindow()
@@ -50,18 +50,18 @@ void ProgressWindow::setupUI()
     statusLabel_->setStyleSheet("QLabel { font-weight: bold; font-size: 12pt; }");
     mainLayout->addWidget(statusLabel_);
 
-    // Main progress bar
-    progressLabel_ = new QLabel("Progress:", this);
-    mainLayout->addWidget(progressLabel_);
+    // Primary progress bar
+    primaryProgressLabel_ = new QLabel("Progress:", this);
+    mainLayout->addWidget(primaryProgressLabel_);
 
-    mainProgressBar_ = new QProgressBar(this);
-    mainProgressBar_->setRange(0, 1000);
-    mainProgressBar_->setValue(0);
-    mainProgressBar_->setTextVisible(true);
-    mainProgressBar_->setFormat("%p%");
-    mainLayout->addWidget(mainProgressBar_);
+    primaryProgressBar_ = new QProgressBar(this);
+    primaryProgressBar_->setRange(0, 1000);
+    primaryProgressBar_->setValue(0);
+    primaryProgressBar_->setTextVisible(true);
+    primaryProgressBar_->setFormat("%p%");
+    mainLayout->addWidget(primaryProgressBar_);
 
-    // Secondary progress bar (initially hidden) - MOVED HERE
+    // Secondary progress bar (initially hidden)
     secondaryProgressLabel_ = new QLabel("Secondary Progress:", this);
     mainLayout->addWidget(secondaryProgressLabel_);
 
@@ -72,11 +72,9 @@ void ProgressWindow::setupUI()
     secondaryProgressBar_->setFormat("%p%");
     mainLayout->addWidget(secondaryProgressBar_);
 
-    // Fitness chart placeholder (will be created later)
-    fitnessChartView_ = nullptr;  // Created in createFitnessChart()
-
-    // MCMC chart placeholder (will be created later)
-    mcmcChartView_ = nullptr;  // Created in createMCMCChart()
+    // Chart placeholders (will be created later)
+    primaryChartView_ = nullptr;
+    secondaryChartView_ = nullptr;
 
     // Information Panel (initially hidden)
     infoPanelLabel_ = new QLabel("Information:", this);
@@ -126,152 +124,152 @@ void ProgressWindow::setupUI()
     connect(cancelButton_, &QPushButton::clicked, this, &ProgressWindow::onCancelClicked);
 }
 
-
-void ProgressWindow::createFitnessChart()
+void ProgressWindow::createPrimaryChart()
 {
     // Create chart
-    fitnessChart_ = new QChart();
-    fitnessChart_->setTitle("Best Fitness per Generation");
-    fitnessChart_->setAnimationOptions(QChart::NoAnimation);
-    fitnessChart_->legend()->hide();
+    primaryChart_ = new QChart();
+    primaryChart_->setTitle("Primary Chart");
+    primaryChart_->setAnimationOptions(QChart::NoAnimation);
+    primaryChart_->legend()->hide();
 
     // Create line series
-    fitnessSeries_ = new QLineSeries();
-    fitnessSeries_->setName("Best Fitness");
+    primarySeries_ = new QLineSeries();
+    primarySeries_->setName("Primary Data");
 
     // Set line pen
     QPen pen(Qt::blue);
     pen.setWidth(2);
 
     // Create area series for filling
-    fitnessAreaSeries_ = new QAreaSeries(fitnessSeries_);
-    fitnessAreaSeries_->setName("Best Fitness");
+    primaryAreaSeries_ = new QAreaSeries(primarySeries_);
+    primaryAreaSeries_->setName("Primary Data");
 
     // Set fill color with transparency
     QLinearGradient gradient(QPointF(0, 0), QPointF(0, 1));
     gradient.setColorAt(0.0, QColor(0, 0, 255, 180));    // Blue at top
     gradient.setColorAt(1.0, QColor(0, 0, 255, 40));     // Light blue at bottom
     gradient.setCoordinateMode(QGradient::ObjectBoundingMode);
-    fitnessAreaSeries_->setBrush(gradient);
-    fitnessAreaSeries_->setPen(pen);
+    primaryAreaSeries_->setBrush(gradient);
+    primaryAreaSeries_->setPen(pen);
 
     // Add area series to chart
-    fitnessChart_->addSeries(fitnessAreaSeries_);
+    primaryChart_->addSeries(primaryAreaSeries_);
 
     // Create axes
-    fitnessAxisX_ = new QValueAxis();
-    fitnessAxisX_->setTitleText("Generation");
-    fitnessAxisX_->setLabelFormat("%d");
-    fitnessAxisX_->setRange(0, 100);
-    fitnessChart_->addAxis(fitnessAxisX_, Qt::AlignBottom);
-    fitnessAreaSeries_->attachAxis(fitnessAxisX_);
+    primaryAxisX_ = new QValueAxis();
+    primaryAxisX_->setTitleText("X");
+    primaryAxisX_->setLabelFormat("%g");
+    primaryAxisX_->setRange(0, 100);
+    primaryChart_->addAxis(primaryAxisX_, Qt::AlignBottom);
+    primaryAreaSeries_->attachAxis(primaryAxisX_);
 
-    fitnessAxisY_ = new QValueAxis();
-    fitnessAxisY_->setTitleText("Fitness");
-    fitnessAxisY_->setLabelFormat("%.2e");
-    fitnessAxisY_->setRange(0, 1);
-    fitnessChart_->addAxis(fitnessAxisY_, Qt::AlignLeft);
-    fitnessAreaSeries_->attachAxis(fitnessAxisY_);
+    primaryAxisY_ = new QValueAxis();
+    primaryAxisY_->setTitleText("Y");
+    primaryAxisY_->setLabelFormat("%.2e");
+    primaryAxisY_->setRange(0, 1);
+    primaryChart_->addAxis(primaryAxisY_, Qt::AlignLeft);
+    primaryAreaSeries_->attachAxis(primaryAxisY_);
 
     // Create chart view
-    fitnessChartView_ = new QChartView(fitnessChart_, this);
-    fitnessChartView_->setRenderHint(QPainter::Antialiasing);
-    fitnessChartView_->setMinimumHeight(250);
+    primaryChartView_ = new QChartView(primaryChart_, this);
+    primaryChartView_->setRenderHint(QPainter::Antialiasing);
+    primaryChartView_->setMinimumHeight(250);
 
     // Add to layout (after secondary progress bar)
     QVBoxLayout* mainLayout = qobject_cast<QVBoxLayout*>(layout());
     if (mainLayout) {
-        mainLayout->insertWidget(4, fitnessChartView_);
+        mainLayout->insertWidget(4, primaryChartView_);
     }
 }
 
-void ProgressWindow::createMCMCChart()
+void ProgressWindow::createSecondaryChart()
 {
     // Create chart
-    mcmcChart_ = new QChart();
-    mcmcChart_->setTitle("Log Posterior");
-    mcmcChart_->setAnimationOptions(QChart::NoAnimation);
-    mcmcChart_->legend()->hide();
+    secondaryChart_ = new QChart();
+    secondaryChart_->setTitle("Secondary Chart");
+    secondaryChart_->setAnimationOptions(QChart::NoAnimation);
+    secondaryChart_->legend()->hide();
 
     // Create line series
-    mcmcSeries_ = new QLineSeries();
-    mcmcSeries_->setName("Log Posterior");
+    secondarySeries_ = new QLineSeries();
+    secondarySeries_->setName("Secondary Data");
 
     // Set line pen
     QPen pen(Qt::red);
     pen.setWidth(2);
 
     // Create area series for filling
-    mcmcAreaSeries_ = new QAreaSeries(mcmcSeries_);
-    mcmcAreaSeries_->setName("Log Posterior");
+    secondaryAreaSeries_ = new QAreaSeries(secondarySeries_);
+    secondaryAreaSeries_->setName("Secondary Data");
 
     // Set fill color with transparency
     QLinearGradient gradient(QPointF(0, 0), QPointF(0, 1));
     gradient.setColorAt(0.0, QColor(255, 0, 0, 180));    // Red at top
     gradient.setColorAt(1.0, QColor(255, 0, 0, 40));     // Light red at bottom
     gradient.setCoordinateMode(QGradient::ObjectBoundingMode);
-    mcmcAreaSeries_->setBrush(gradient);
-    mcmcAreaSeries_->setPen(pen);
+    secondaryAreaSeries_->setBrush(gradient);
+    secondaryAreaSeries_->setPen(pen);
 
     // Add area series to chart
-    mcmcChart_->addSeries(mcmcAreaSeries_);
+    secondaryChart_->addSeries(secondaryAreaSeries_);
 
     // Create axes
-    mcmcAxisX_ = new QValueAxis();
-    mcmcAxisX_->setTitleText("Sample");
-    mcmcAxisX_->setLabelFormat("%d");
-    mcmcAxisX_->setRange(0, 1000);
-    mcmcChart_->addAxis(mcmcAxisX_, Qt::AlignBottom);
-    mcmcAreaSeries_->attachAxis(mcmcAxisX_);
+    secondaryAxisX_ = new QValueAxis();
+    secondaryAxisX_->setTitleText("X");
+    secondaryAxisX_->setLabelFormat("%g");
+    secondaryAxisX_->setRange(0, 1000);
+    secondaryChart_->addAxis(secondaryAxisX_, Qt::AlignBottom);
+    secondaryAreaSeries_->attachAxis(secondaryAxisX_);
 
-    mcmcAxisY_ = new QValueAxis();
-    mcmcAxisY_->setTitleText("Log Posterior");
-    mcmcAxisY_->setLabelFormat("%.2f");
-    mcmcAxisY_->setRange(-1000, 0);
-    mcmcChart_->addAxis(mcmcAxisY_, Qt::AlignLeft);
-    mcmcAreaSeries_->attachAxis(mcmcAxisY_);
+    secondaryAxisY_ = new QValueAxis();
+    secondaryAxisY_->setTitleText("Y");
+    secondaryAxisY_->setLabelFormat("%.2f");
+    secondaryAxisY_->setRange(-1000, 0);
+    secondaryChart_->addAxis(secondaryAxisY_, Qt::AlignLeft);
+    secondaryAreaSeries_->attachAxis(secondaryAxisY_);
 
     // Create chart view
-    mcmcChartView_ = new QChartView(mcmcChart_, this);
-    mcmcChartView_->setRenderHint(QPainter::Antialiasing);
-    mcmcChartView_->setMinimumHeight(250);
+    secondaryChartView_ = new QChartView(secondaryChart_, this);
+    secondaryChartView_->setRenderHint(QPainter::Antialiasing);
+    secondaryChartView_->setMinimumHeight(250);
 
-    // Add to layout (after fitness chart)
+    // Add to layout (after primary chart)
     QVBoxLayout* mainLayout = qobject_cast<QVBoxLayout*>(layout());
     if (mainLayout) {
-        mainLayout->insertWidget(5, mcmcChartView_);
+        mainLayout->insertWidget(5, secondaryChartView_);
     }
 }
+
 // ============================================================================
 // Progress Bar Methods
 // ============================================================================
 
-void ProgressWindow::setProgress(double progress)
+void ProgressWindow::SetProgress(double progress)
 {
     int value = static_cast<int>(progress * 1000);
-    mainProgressBar_->setValue(value);
+    primaryProgressBar_->setValue(value);
     QApplication::processEvents();
 }
 
-void ProgressWindow::setSecondaryProgress(double progress)
+void ProgressWindow::SetSecondaryProgress(double progress)
 {
     int value = static_cast<int>(progress * 1000);
     secondaryProgressBar_->setValue(value);
     QApplication::processEvents();
 }
 
-void ProgressWindow::setSecondaryProgressVisible(bool visible)
+void ProgressWindow::SetSecondaryProgressVisible(bool visible)
 {
     secondaryProgressLabel_->setVisible(visible);
     secondaryProgressBar_->setVisible(visible);
 }
 
-void ProgressWindow::setProgressLabel(const QString& label)
+void ProgressWindow::SetProgressLabel(const QString& label)
 {
-    progressLabel_->setText(label);
+    primaryProgressLabel_->setText(label);
 }
 
-void ProgressWindow::setSecondaryProgressLabel(const QString& label)
+void ProgressWindow::SetSecondaryProgressLabel(const QString& label)
 {
     secondaryProgressLabel_->setText(label);
 }
@@ -280,13 +278,13 @@ void ProgressWindow::setSecondaryProgressLabel(const QString& label)
 // Status and Logging Methods
 // ============================================================================
 
-void ProgressWindow::setStatus(const QString& status)
+void ProgressWindow::SetStatus(const QString& status)
 {
     statusLabel_->setText(status);
     QApplication::processEvents();
 }
 
-void ProgressWindow::appendLog(const QString& message)
+void ProgressWindow::AppendLog(const QString& message)
 {
     QString timestamp = QDateTime::currentDateTime().toString("hh:mm:ss");
     logTextEdit_->append(QString("[%1] %2").arg(timestamp).arg(message));
@@ -299,7 +297,7 @@ void ProgressWindow::appendLog(const QString& message)
     QApplication::processEvents();
 }
 
-void ProgressWindow::clearLog()
+void ProgressWindow::ClearLog()
 {
     logTextEdit_->clear();
 }
@@ -308,7 +306,7 @@ void ProgressWindow::clearLog()
 // Information Panel Methods
 // ============================================================================
 
-void ProgressWindow::appendInfo(const QString& text)
+void ProgressWindow::AppendInfo(const QString& text)
 {
     infoTextEdit_->append(text);
 
@@ -320,89 +318,125 @@ void ProgressWindow::appendInfo(const QString& text)
     QApplication::processEvents();
 }
 
-void ProgressWindow::setInfoText(const QString& text)
+void ProgressWindow::SetInfoText(const QString& text)
 {
     infoTextEdit_->setPlainText(text);
     QApplication::processEvents();
 }
 
-void ProgressWindow::clearInfo()
+void ProgressWindow::ClearInfo()
 {
     infoTextEdit_->clear();
 }
 
-void ProgressWindow::setInfoPanelVisible(bool visible)
+void ProgressWindow::SetInfoPanelVisible(bool visible)
 {
     infoPanelLabel_->setVisible(visible);
     infoTextEdit_->setVisible(visible);
 }
 
-void ProgressWindow::setInfoPanelLabel(const QString& label)
+void ProgressWindow::SetInfoPanelLabel(const QString& label)
 {
     infoPanelLabel_->setText(label);
 }
 
 // ============================================================================
-// Fitness Chart Methods
+// Primary Chart Methods
 // ============================================================================
 
-void ProgressWindow::addFitnessPoint(int generation, double fitness)
+void ProgressWindow::AddPrimaryChartPoint(double x, double y)
 {
-    fitnessData_.append(QPointF(generation, fitness));
-    updateFitnessChart();
+    primaryData_.append(QPointF(x, y));
+    updatePrimaryChart();
 }
 
-void ProgressWindow::clearFitnessData()
+void ProgressWindow::ClearPrimaryChartData()
 {
-    fitnessData_.clear();
-    fitnessSeries_->clear();
+    primaryData_.clear();
+    primarySeries_->clear();
 }
 
-void ProgressWindow::setFitnessYRange(double min, double max)
+void ProgressWindow::SetPrimaryChartYRange(double min, double max)
 {
-    fitnessAutoScale_ = false;
-    fitnessAxisY_->setRange(min, max);
+    primaryAutoScale_ = false;
+    primaryAxisY_->setRange(min, max);
 }
 
-void ProgressWindow::setFitnessAutoScale(bool enabled)
+void ProgressWindow::SetPrimaryChartXRange(double min, double max)
 {
-    fitnessAutoScale_ = enabled;
-}
-
-void ProgressWindow::setFitnessChartVisible(bool visible)
-{
-    if (fitnessChartView_) {
-        fitnessChartView_->setVisible(visible);
+    if (primaryAxisX_) {
+        primaryAxisX_->setRange(min, max);
     }
 }
 
-void ProgressWindow::setFitnessChartTitle(const QString& title)
+void ProgressWindow::SetPrimaryChartAutoScale(bool enabled)
 {
-    if (fitnessChart_) {
-        fitnessChart_->setTitle(title);
+    primaryAutoScale_ = enabled;
+}
+
+void ProgressWindow::SetPrimaryChartVisible(bool visible)
+{
+    if (primaryChartView_) {
+        primaryChartView_->setVisible(visible);
     }
 }
 
-void ProgressWindow::updateFitnessChart()
+void ProgressWindow::SetPrimaryChartTitle(const QString& title)
 {
-    if (fitnessData_.isEmpty()) {
+    if (primaryChart_) {
+        primaryChart_->setTitle(title);
+    }
+}
+
+void ProgressWindow::SetPrimaryChartXAxisTitle(const QString& title)
+{
+    if (primaryAxisX_) {
+        primaryAxisX_->setTitleText(title);
+    }
+}
+
+void ProgressWindow::SetPrimaryChartYAxisTitle(const QString& title)
+{
+    if (primaryAxisY_) {
+        primaryAxisY_->setTitleText(title);
+    }
+}
+
+void ProgressWindow::SetPrimaryChartColor(const QColor& color)
+{
+    if (primaryAreaSeries_) {
+        // Update line pen
+        QPen pen = primaryAreaSeries_->pen();
+        pen.setColor(color);
+        primaryAreaSeries_->setPen(pen);
+
+        // Update gradient
+        QLinearGradient gradient(QPointF(0, 0), QPointF(0, 1));
+        gradient.setColorAt(0.0, QColor(color.red(), color.green(), color.blue(), 180));
+        gradient.setColorAt(1.0, QColor(color.red(), color.green(), color.blue(), 40));
+        gradient.setCoordinateMode(QGradient::ObjectBoundingMode);
+        primaryAreaSeries_->setBrush(gradient);
+    }
+}
+
+void ProgressWindow::updatePrimaryChart()
+{
+    if (primaryData_.isEmpty()) {
         return;
     }
 
     // Update series
-    fitnessSeries_->replace(fitnessData_);
+    primarySeries_->replace(primaryData_);
 
     // Auto-scale if enabled
-    if (fitnessAutoScale_ && !fitnessData_.isEmpty()) {
+    if (primaryAutoScale_ && !primaryData_.isEmpty()) {
         // Find min/max
-        double minVal = fitnessData_[0].y();
-        double maxVal = fitnessData_[0].y();
-        int maxGen = fitnessData_[0].x();
+        double minVal = primaryData_[0].y();
+        double maxVal = primaryData_[0].y();
 
-        for (const QPointF& point : fitnessData_) {
+        for (const QPointF& point : primaryData_) {
             minVal = qMin(minVal, point.y());
             maxVal = qMax(maxVal, point.y());
-            maxGen = qMax(maxGen, static_cast<int>(point.x()));
         }
 
         // Add 10% padding
@@ -415,74 +449,109 @@ void ProgressWindow::updateFitnessChart()
             maxVal += 0.1;
         }
 
-        fitnessAxisY_->setRange(minVal, maxVal);
-
+        primaryAxisY_->setRange(minVal, maxVal);
     }
 
     QApplication::processEvents();
 }
 
 // ============================================================================
-// MCMC Chart Methods
+// Secondary Chart Methods
 // ============================================================================
 
-void ProgressWindow::addMCMCPoint(int sample, double logPosterior)
+void ProgressWindow::AddSecondaryChartPoint(double x, double y)
 {
-    mcmcData_.append(QPointF(sample, logPosterior));
-    updateMCMCChart();
+    secondaryData_.append(QPointF(x, y));
+    updateSecondaryChart();
 }
 
-void ProgressWindow::clearMCMCData()
+void ProgressWindow::ClearSecondaryChartData()
 {
-    mcmcData_.clear();
-    mcmcSeries_->clear();
+    secondaryData_.clear();
+    secondarySeries_->clear();
 }
 
-void ProgressWindow::setMCMCYRange(double min, double max)
+void ProgressWindow::SetSecondaryChartYRange(double min, double max)
 {
-    mcmcAutoScale_ = false;
-    mcmcAxisY_->setRange(min, max);
+    secondaryAutoScale_ = false;
+    secondaryAxisY_->setRange(min, max);
 }
 
-void ProgressWindow::setMCMCAutoScale(bool enabled)
+void ProgressWindow::SetSecondaryChartXRange(double min, double max)
 {
-    mcmcAutoScale_ = enabled;
-}
-
-void ProgressWindow::setMCMCChartVisible(bool visible)
-{
-    if (mcmcChartView_) {
-        mcmcChartView_->setVisible(visible);
+    if (secondaryAxisX_) {
+        secondaryAxisX_->setRange(min, max);
     }
 }
 
-void ProgressWindow::setMCMCChartTitle(const QString& title)
+void ProgressWindow::SetSecondaryChartAutoScale(bool enabled)
 {
-    if (mcmcChart_) {
-        mcmcChart_->setTitle(title);
+    secondaryAutoScale_ = enabled;
+}
+
+void ProgressWindow::SetSecondaryChartVisible(bool visible)
+{
+    if (secondaryChartView_) {
+        secondaryChartView_->setVisible(visible);
     }
 }
 
-void ProgressWindow::updateMCMCChart()
+void ProgressWindow::SetSecondaryChartTitle(const QString& title)
 {
-    if (mcmcData_.isEmpty()) {
+    if (secondaryChart_) {
+        secondaryChart_->setTitle(title);
+    }
+}
+
+void ProgressWindow::SetSecondaryChartXAxisTitle(const QString& title)
+{
+    if (secondaryAxisX_) {
+        secondaryAxisX_->setTitleText(title);
+    }
+}
+
+void ProgressWindow::SetSecondaryChartYAxisTitle(const QString& title)
+{
+    if (secondaryAxisY_) {
+        secondaryAxisY_->setTitleText(title);
+    }
+}
+
+void ProgressWindow::SetSecondaryChartColor(const QColor& color)
+{
+    if (secondaryAreaSeries_) {
+        // Update line pen
+        QPen pen = secondaryAreaSeries_->pen();
+        pen.setColor(color);
+        secondaryAreaSeries_->setPen(pen);
+
+        // Update gradient
+        QLinearGradient gradient(QPointF(0, 0), QPointF(0, 1));
+        gradient.setColorAt(0.0, QColor(color.red(), color.green(), color.blue(), 180));
+        gradient.setColorAt(1.0, QColor(color.red(), color.green(), color.blue(), 40));
+        gradient.setCoordinateMode(QGradient::ObjectBoundingMode);
+        secondaryAreaSeries_->setBrush(gradient);
+    }
+}
+
+void ProgressWindow::updateSecondaryChart()
+{
+    if (secondaryData_.isEmpty()) {
         return;
     }
 
     // Update series
-    mcmcSeries_->replace(mcmcData_);
+    secondarySeries_->replace(secondaryData_);
 
     // Auto-scale if enabled
-    if (mcmcAutoScale_ && !mcmcData_.isEmpty()) {
+    if (secondaryAutoScale_ && !secondaryData_.isEmpty()) {
         // Find min/max
-        double minVal = mcmcData_[0].y();
-        double maxVal = mcmcData_[0].y();
-        int maxSample = mcmcData_[0].x();
+        double minVal = secondaryData_[0].y();
+        double maxVal = secondaryData_[0].y();
 
-        for (const QPointF& point : mcmcData_) {
+        for (const QPointF& point : secondaryData_) {
             minVal = qMin(minVal, point.y());
             maxVal = qMax(maxVal, point.y());
-            maxSample = qMax(maxSample, static_cast<int>(point.x()));
         }
 
         // Add 10% padding
@@ -495,8 +564,7 @@ void ProgressWindow::updateMCMCChart()
             maxVal += 0.1;
         }
 
-        mcmcAxisY_->setRange(minVal, maxVal);
-        mcmcAxisX_->setRange(0, maxSample + 100);
+        secondaryAxisY_->setRange(minVal, maxVal);
     }
 
     QApplication::processEvents();
@@ -506,14 +574,14 @@ void ProgressWindow::updateMCMCChart()
 // Control Methods
 // ============================================================================
 
-void ProgressWindow::setPauseEnabled(bool enabled)
+void ProgressWindow::SetPauseEnabled(bool enabled)
 {
     pauseResumeButton_->setEnabled(enabled);
 }
 
-void ProgressWindow::setComplete(const QString& message)
+void ProgressWindow::SetComplete(const QString& message)
 {
-    setStatus(message);
+    SetStatus(message);
     pauseResumeButton_->setEnabled(false);
     cancelButton_->setText("Close");
 }
@@ -525,14 +593,14 @@ void ProgressWindow::onPauseResumeClicked()
         isPaused_ = false;
         pauseRequested_ = false;
         pauseResumeButton_->setText("Pause");
-        appendLog("Resumed");
+        AppendLog("Resumed");
         emit resumeClicked();
     } else {
         // Pause
         isPaused_ = true;
         pauseRequested_ = true;
         pauseResumeButton_->setText("Resume");
-        appendLog("Pause requested...");
+        AppendLog("Pause requested...");
         emit pauseClicked();
     }
 }
@@ -545,14 +613,7 @@ void ProgressWindow::onCancelClicked()
     }
 
     cancelRequested_ = true;
-    appendLog("Cancel requested...");
+    AppendLog("Cancel requested...");
     cancelButton_->setEnabled(false);
     emit cancelClicked();
-}
-
-void ProgressWindow::setFitnessXRange(double min, double max)
-{
-    if (fitnessAxisX_) {
-        fitnessAxisX_->setRange(min, max);
-    }
 }

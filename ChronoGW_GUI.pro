@@ -32,13 +32,36 @@ CONFIG(release, debug|release) {
 # Platform-specific configurations
 win32 {
     DEFINES += _WINDOWS
-    # Add Windows-specific libraries if needed
+
+    # OpenMP only in release on Windows
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS += /openmp
+        message(Windows Release: OpenMP enabled)
+    }
+
+    CONFIG(debug, debug|release) {
+        DEFINES += NO_OPENMP
+        message(Windows Debug: OpenMP disabled, NO_OPENMP defined)
+    }
 }
 
 unix:!macx {
     # Linux-specific configuration
-    LIBS += -lopenblas -lgomp
-    QMAKE_CXXFLAGS += -fopenmp
+    LIBS += -lopenblas
+
+    # OpenMP only in release mode
+    CONFIG(release, debug|release) {
+        QMAKE_CXXFLAGS += -fopenmp
+        QMAKE_LFLAGS += -fopenmp
+        LIBS += -lgomp -fopenmp
+        message(Release mode: OpenMP enabled)
+    }
+
+    # Debug mode: disable OpenMP
+    CONFIG(debug, debug|release) {
+        DEFINES += NO_OPENMP
+        message(Debug mode: OpenMP disabled, NO_OPENMP defined)
+    }
 }
 
 macx {
@@ -46,12 +69,11 @@ macx {
     DEFINES += mac_version
     # macOS-specific configuration
     # Note: OpenMP may not be available on macOS by default
-}
 
-# OpenMP support (if available)
-!macx {
-    QMAKE_CXXFLAGS += -fopenmp
-    QMAKE_LFLAGS += -fopenmp
+    CONFIG(debug, debug|release) {
+        DEFINES += NO_OPENMP
+        message(macOS Debug: OpenMP disabled, NO_OPENMP defined)
+    }
 }
 
 #-------------------------------------------------
@@ -70,6 +92,7 @@ SOURCES += \
     InverseModeling/src/GA/GADistribution.cpp \
     InverseModeling/src/GA/Individual.cpp \
     LIDconfig.cpp \
+    MCMCSettingsDialog.cpp \
     ProgressWindow.cpp \
     Tracer.cpp \
     Utilities/Distribution.cpp \
@@ -116,6 +139,7 @@ HEADERS += \
     InverseModeling/observation.h \
     InverseModeling/parameter.h \
     InverseModeling/parameter_set.h \
+    MCMCSettingsDialog.h \
     ProgressWindow.h \
     Tracer.h \
     Utilities/Distribution.h \
@@ -174,10 +198,6 @@ INCLUDEPATH += Utilities/
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
-
-QMAKE_CXXFLAGS += -fopenmp
-QMAKE_LFLAGS += -fopenmp
-LIBS += -fopenmp
 
 linux {
     #sudo apt-get install libblas-dev liblapack-dev

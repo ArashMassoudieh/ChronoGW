@@ -242,11 +242,9 @@ void CGWA::loadSettings()
 void CGWA::loadParameters()
 {
     parameters_.clear();
-
     for (size_t i = 0; i < config_data_.keywords.size(); ++i) {
         if (aquiutils::tolower(config_data_.keywords[i]) == "parameter") {
             inverse_enabled_ = true;
-
             Parameter param;
             param.SetName(config_data_.values[i]);
 
@@ -290,15 +288,30 @@ void CGWA::loadParameters()
                 }
             }
 
+            // Set prior mean and std based on distribution and range
+            auto range = param.GetRange();
+            std::string dist = param.GetPriorDistribution();
+
+            if (dist == "normal" || dist == "log-normal") {
+                // For normal/log-normal: assume 95% of distribution within [low, high]
+                // This means ±2σ covers the range
+                double prior_mean = (range.low + range.high) / 2.0;
+                double prior_std = (range.high - range.low) / 4.0;  // ±2σ ≈ 95%
+                param.SetPriorParameters(prior_mean, prior_std);
+            }
+
             parameters_.AddParameter(param);
 
-            // Initial value: midpoint (or geometric mean if log-scale)
-            double initial_value;
-            if (param.GetPriorDistribution() != "log-normal") {
-                initial_value = 0.5 * (param.GetRange().low + param.GetRange().high);
-            } else {
-                initial_value = std::sqrt(std::abs(param.GetRange().low * param.GetRange().high));
-                if (param.GetRange().low < 0) initial_value = -initial_value;
+            // Set initial value if not explicitly provided
+            if (param.GetValue() == 0.0) {
+                double initial_value;
+                if (dist != "log-normal") {
+                    initial_value = 0.5 * (range.low + range.high);
+                } else {
+                    initial_value = std::sqrt(std::abs(range.low * range.high));
+                    if (range.low < 0) initial_value = -initial_value;
+                }
+                param.SetValue(initial_value);
             }
         }
     }

@@ -40,7 +40,9 @@ private slots:
     void onObservationContextAction(const QString& obsName, int index, const QString& actionType);
     void onRecentFileTriggered();
     void onGASettingsTriggered();
+    void onMCMCSettingsTriggered();
     void onRunDeterministicGA();
+    void onRunMCMC();
 
 private:
     Ui::MainWindow *ui;
@@ -74,6 +76,10 @@ private:
     QString getGASettingsFilename(const QString& projectFilename);
     void saveGASettings(const QString& filename);
     void loadGASettings(const QString& filename);
+    void loadMCMCSettings(const QString& filename);
+    void saveMCMCSettings(const QString& filename);
+    QString getMCMCSettingsFilename(const QString& projectFilename);
+
     ProgressWindow* progressWindow_;
 
 };

@@ -306,11 +306,11 @@ TimeSeries<double> CWell::createExponentialDistribution(
     }
 
     for (int i = 0; i < num_intervals + 1; ++i) {
-        qDebug()<<i;
-        qDebug()<<-age_dist.getTime(i);
-        qDebug()<<-age_dist.getTime(i) / params[0];
-        qDebug()<<exp(-age_dist.getTime(i) / params[0]);
-        qDebug() <<(1.0 / params[0]) * std::exp(-age_dist.getTime(i) / params[0]);
+        //qDebug()<<i;
+        //qDebug()<<-age_dist.getTime(i);
+        //qDebug()<<-age_dist.getTime(i) / params[0];
+        //qDebug()<<exp(-age_dist.getTime(i) / params[0]);
+        //qDebug() <<(1.0 / params[0]) * std::exp(-age_dist.getTime(i) / params[0]);
         age_dist.setValue(i, (1.0 / params[0]) * std::exp(-age_dist.getTime(i) / params[0]));
     }
 

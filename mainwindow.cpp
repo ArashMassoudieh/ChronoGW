@@ -15,6 +15,7 @@
 #include "chartwindow.h"
 #include <QStandardPaths>
 #include "GASettingsDialog.h"
+#include "MCMCSettingsDialog.h"
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -35,8 +36,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionSave, &QAction::triggered, this, &MainWindow::onSaveFile);
     connect(ui->actionSave_As, &QAction::triggered, this, &MainWindow::onSaveAsFile);
     connect(ui->actionGenetic_Algorithm_Settings, &QAction::triggered, this, &MainWindow::onGASettingsTriggered);
+    connect(ui->actionMCMC_Settings, &QAction::triggered, this, &MainWindow::onMCMCSettingsTriggered);
     connect(ui->actionDeterministic_GA, &QAction::triggered, this, &MainWindow::onRunDeterministicGA);
-
+    connect(ui->actionBayesian_MCMC, &QAction::triggered, this, &MainWindow::onRunMCMC);
     recentFilesMenu = new QMenu("Recent Projects", this);
     ui->actionRecent_Projects->setMenu(recentFilesMenu);
     updateRecentFilesMenu();
@@ -153,6 +155,10 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+// ============================================================================
+// Updated onOpenFile() - Add MCMC settings loading
+// ============================================================================
+
 void MainWindow::onOpenFile()
 {
     // Open file dialog to select GWA configuration file
@@ -175,29 +181,22 @@ void MainWindow::onOpenFile()
         currentFilePath_ = fileName;
         statusBar()->showMessage(tr("Loaded: %1").arg(fileName), 3000);
 
-        qDebug() << "=== DEBUG: After loading GWA file ===";
-        qDebug() << "Current GA maxpop:" << ga.getPopulationSize();
-        qDebug() << "Current GA ngen:" << ga.getNumGenerations();
-
-        // Create a fresh GA object linked to the loaded model
+        // Create fresh GA object linked to the loaded model
         ga = CGA<CGWA>(&gwaModel);
 
-        qDebug() << "=== DEBUG: After creating fresh GA ===";
-        qDebug() << "Current GA maxpop:" << ga.getPopulationSize();
-        qDebug() << "Current GA ngen:" << ga.getNumGenerations();
+        // Create fresh MCMC object linked to the loaded model
+        mcmc = CMCMC<CGWA>(&gwaModel);
 
-        // Load GA settings if available (AFTER creating fresh GA)
+        // Load GA settings if available
         QString gaFile = getGASettingsFilename(fileName);
-        qDebug() << "=== DEBUG: GA settings file:" << gaFile;
-        qDebug() << "File exists?" << QFile::exists(gaFile);
-
         if (QFile::exists(gaFile)) {
-            qDebug() << "=== DEBUG: Loading GA settings from file ===";
             loadGASettings(gaFile);
+        }
 
-            qDebug() << "=== DEBUG: After loading GA settings ===";
-            qDebug() << "Current GA maxpop:" << ga.getPopulationSize();
-            qDebug() << "Current GA ngen:" << ga.getNumGenerations();
+        // Load MCMC settings if available
+        QString mcmcFile = getMCMCSettingsFilename(fileName);
+        if (QFile::exists(mcmcFile)) {
+            loadMCMCSettings(mcmcFile);
         }
 
         updateAllWidgets();
@@ -212,6 +211,10 @@ void MainWindow::onOpenFile()
     setModified(false);
     addToRecentFiles(currentFilePath_);
 }
+
+// ============================================================================
+// Updated onSaveFile() - Add MCMC settings saving
+// ============================================================================
 
 void MainWindow::onSaveFile()
 {
@@ -237,6 +240,10 @@ void MainWindow::onSaveFile()
         QString gaFile = getGASettingsFilename(currentFilePath_);
         saveGASettings(gaFile);
 
+        // Save MCMC settings
+        QString mcmcFile = getMCMCSettingsFilename(currentFilePath_);
+        saveMCMCSettings(mcmcFile);
+
     } else {
         QMessageBox::critical(
             this,
@@ -245,9 +252,12 @@ void MainWindow::onSaveFile()
             );
     }
     setModified(false);
-
     addToRecentFiles(currentFilePath_);
 }
+
+// ============================================================================
+// Updated onSaveAsFile() - Add MCMC settings saving
+// ============================================================================
 
 void MainWindow::onSaveAsFile()
 {
@@ -287,6 +297,10 @@ void MainWindow::onSaveAsFile()
         QString gaFile = getGASettingsFilename(currentFilePath_);
         saveGASettings(gaFile);
 
+        // Save MCMC settings
+        QString mcmcFile = getMCMCSettingsFilename(currentFilePath_);
+        saveMCMCSettings(mcmcFile);
+
     } else {
         QMessageBox::critical(
             this,
@@ -298,6 +312,52 @@ void MainWindow::onSaveAsFile()
     addToRecentFiles(currentFilePath_);
 }
 
+// ============================================================================
+// Updated onRecentFileTriggered() - Add MCMC settings loading
+// ============================================================================
+
+void MainWindow::onRecentFileTriggered()
+{
+    QAction* action = qobject_cast<QAction*>(sender());
+    if (action) {
+        QString filePath = action->data().toString();
+        if (QFile::exists(filePath)) {
+            currentFilePath_ = filePath;
+            // Load the file using your existing load logic
+            gwaModel.loadFromFile(filePath.toStdString());
+
+            // Create fresh GA object linked to the loaded model
+            ga = CGA<CGWA>(&gwaModel);
+
+            // Create fresh MCMC object linked to the loaded model
+            mcmc = CMCMC<CGWA>(&gwaModel);
+
+            // Load GA settings if available
+            QString gaFile = getGASettingsFilename(filePath);
+            if (QFile::exists(gaFile)) {
+                loadGASettings(gaFile);
+            }
+
+            // Load MCMC settings if available
+            QString mcmcFile = getMCMCSettingsFilename(filePath);
+            if (QFile::exists(mcmcFile)) {
+                loadMCMCSettings(mcmcFile);
+            }
+
+            updateAllWidgets();
+            setModified(false);
+            addToRecentFiles(filePath);
+        } else {
+            QMessageBox::warning(this, "File Not Found",
+                                 "The file no longer exists:\n" + filePath);
+            // Remove from recent files
+            QStringList files = loadRecentFiles();
+            files.removeAll(filePath);
+            saveRecentFiles(files);
+            updateRecentFilesMenu();
+        }
+    }
+}
 
 void MainWindow::onEditWell(const QString& wellName, int index)
 {
@@ -861,43 +921,15 @@ void MainWindow::updateRecentFilesMenu()
     }
 }
 
-void MainWindow::onRecentFileTriggered()
-{
-    QAction* action = qobject_cast<QAction*>(sender());
-    if (action) {
-        QString filePath = action->data().toString();
-        if (QFile::exists(filePath)) {
-            currentFilePath_ = filePath;
-            // Load the file using your existing load logic
-            gwaModel.loadFromFile(filePath.toStdString());
-
-            // Create a fresh GA object linked to the loaded model
-            ga = CGA<CGWA>(&gwaModel);
-
-            // Load GA settings if available
-            QString gaFile = getGASettingsFilename(filePath);
-            if (QFile::exists(gaFile)) {
-                loadGASettings(gaFile);
-            }
-
-            updateAllWidgets();
-            setModified(false);
-            addToRecentFiles(filePath);
-        } else {
-            QMessageBox::warning(this, "File Not Found",
-                                 "The file no longer exists:\n" + filePath);
-            // Remove from recent files
-            QStringList files = loadRecentFiles();
-            files.removeAll(filePath);
-            saveRecentFiles(files);
-            updateRecentFilesMenu();
-        }
-    }
-}
-
 void MainWindow::onGASettingsTriggered()
 {
     GASettingsDialog dialog(&ga, this);
+    dialog.exec();
+}
+
+void MainWindow::onMCMCSettingsTriggered()
+{
+    MCMCSettingsDialog dialog(&mcmc, this);
     dialog.exec();
 }
 
@@ -934,6 +966,84 @@ void MainWindow::saveGASettings(const QString& filename)
     file.close();
 }
 
+// ============================================================================
+// Updated saveMCMCSettings() for mainwindow.cpp
+// ============================================================================
+
+void MainWindow::saveMCMCSettings(const QString& filename)
+{
+    QFile file(filename);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return;
+    }
+
+    QTextStream out(&file);
+
+    // Get current settings from MCMC object
+    const MCMCSettings& settings = mcmc.GetSettings();
+
+    // Write MCMC parameters with actual values from the MCMC object
+    out << "number_of_samples " << settings.total_number_of_samples << "\n";
+    out << "number_of_chains " << settings.number_of_chains << "\n";
+    out << "number_of_burnout_samples " << settings.burnout_samples << "\n";
+    out << "record_interval " << settings.save_interval << "\n";
+    out << "perturbation_factor " << settings.perturbation_factor << "\n";
+    out << "perturbation_change_scale " << settings.perturbation_change_scale << "\n";
+    out << "acceptance_rate " << settings.acceptance_rate << "\n";
+    out << "number_of_threads " << settings.numberOfThreads << "\n";
+
+    // Boolean settings
+    // Note: settings.no_initial_perturbation is TRUE when we should SKIP perturbation
+    // The property "initial_perturbation" expects "yes" to DO perturbation, "no" to SKIP
+    out << "initial_perturbation " << (settings.no_initial_perturbation ? "no" : "yes") << "\n";
+    out << "sensitivity_based_perturbation " << (settings.sensitivity_based_perturbation ? "yes" : "no") << "\n";
+    out << "perform_global_sensitivity " << (settings.global_sensitivity ? "yes" : "no") << "\n";
+
+    // Post-processing
+    out << "number_of_post_estimate_realizations " << settings.number_of_post_estimate_realizations << "\n";
+    out << "increment_for_sensitivity_analysis " << settings.increment_for_sensitivity << "\n";
+    out << "add_noise_to_realizations " << (settings.noise_realization_writeout ? "yes" : "no") << "\n";
+
+    // Continue file (only if set)
+    if (!settings.continue_filename.empty()) {
+        out << "continue_based_on_file_name " << QString::fromStdString(settings.continue_filename) << "\n";
+    }
+
+    file.close();
+}
+
+// ============================================================================
+// loadMCMCSettings() remains the same - it already uses SetProperty correctly
+// ============================================================================
+
+void MainWindow::loadMCMCSettings(const QString& filename)
+{
+    QFile file(filename);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return;
+    }
+
+    QTextStream in(&file);
+
+    while (!in.atEnd()) {
+        QString line = in.readLine().trimmed();
+
+        if (line.isEmpty()) {
+            continue;
+        }
+
+        QStringList tokens = line.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+
+        if (tokens.size() >= 2) {
+            QString key = tokens[0];
+            QString value = tokens[1];
+
+            mcmc.SetProperty(key.toStdString(), value.toStdString());
+        }
+    }
+
+    file.close();
+}
 // ============================================================================
 // Load GA settings from file
 // ============================================================================
@@ -1051,28 +1161,30 @@ void MainWindow::onRunDeterministicGA()
     // ========================================================================
 
     progressWindow_ = new ProgressWindow(this, "GA Optimization");
-    progressWindow_->setProgressLabel("Generation Progress:");
-    progressWindow_->setFitnessChartTitle("Best Fitness per Generation");
-    progressWindow_->setFitnessChartVisible(true);
-    progressWindow_->setMCMCChartVisible(false);
-    progressWindow_->setSecondaryProgressVisible(true);
-    progressWindow_->setSecondaryProgressLabel("Within generation:");
+    progressWindow_->SetProgressLabel("Generation Progress:");
+    progressWindow_->SetPrimaryChartTitle("Best Fitness per Generation");
+    progressWindow_->SetPrimaryChartYAxisTitle("Best Fitness per Generation");
+    progressWindow_->SetPrimaryChartXAxisTitle("Generation");
+    progressWindow_->SetPrimaryChartVisible(true);
+    progressWindow_->SetSecondaryChartVisible(false);
+    progressWindow_->SetSecondaryProgressVisible(true);
+    progressWindow_->SetSecondaryProgressLabel("Within generation:");
 
     // Set X-axis range to number of generations
-    progressWindow_->setFitnessXRange(0, numGenerations);
+    progressWindow_->SetPrimaryChartXRange(0, numGenerations);
 
     // Set the progress window in GA
     ga.SetProgressWindow(progressWindow_);
 
     // Show window
     progressWindow_->show();
-    progressWindow_->setStatus("Initializing GA...");
-    progressWindow_->appendLog("Starting Genetic Algorithm Optimization");
-    progressWindow_->appendLog(QString("Input file: %1").arg(inputFileInfo.fileName()));
-    progressWindow_->appendLog(QString("Output folder: %1").arg(outputFolderName));
-    progressWindow_->appendLog(QString("Generations: %1").arg(numGenerations));
-    progressWindow_->appendLog(QString("Population size: %1").arg(ga.getPopulationSize()));
-    progressWindow_->appendLog("");
+    progressWindow_->SetStatus("Initializing GA...");
+    progressWindow_->AppendLog("Starting Genetic Algorithm Optimization");
+    progressWindow_->AppendLog(QString("Input file: %1").arg(inputFileInfo.fileName()));
+    progressWindow_->AppendLog(QString("Output folder: %1").arg(outputFolderName));
+    progressWindow_->AppendLog(QString("Generations: %1").arg(numGenerations));
+    progressWindow_->AppendLog(QString("Population size: %1").arg(ga.getPopulationSize()));
+    progressWindow_->AppendLog("");
 
     // Process events to show window
     QApplication::processEvents();
@@ -1082,8 +1194,8 @@ void MainWindow::onRunDeterministicGA()
         ga.initFromModel(&gwaModel);
         ga.initialize();
 
-        progressWindow_->setStatus("Running optimization...");
-        progressWindow_->appendLog("Starting generation loop...");
+        progressWindow_->SetStatus("Running optimization...");
+        progressWindow_->AppendLog("Starting generation loop...");
         QApplication::processEvents();
 
         // Run optimization - progress updates happen automatically in GA
@@ -1091,8 +1203,8 @@ void MainWindow::onRunDeterministicGA()
 
         CGWA* bestModel = ga.getBestModel();
         if (bestModel != nullptr) {
-            progressWindow_->appendLog("");
-            progressWindow_->appendLog("=== Updating Model Parameters ===");
+            progressWindow_->AppendLog("");
+            progressWindow_->AppendLog("=== Updating Model Parameters ===");
 
             // Copy parameter values from best model to main model
             Parameter_Set& mainParams = gwaModel.Parameters();
@@ -1102,12 +1214,12 @@ void MainWindow::onRunDeterministicGA()
                 double newValue = bestParams[i]->GetValue();
                 mainParams[i]->SetValue(newValue);
 
-                progressWindow_->appendLog(QString("  Updated %1 = %2")
+                progressWindow_->AppendLog(QString("  Updated %1 = %2")
                                                .arg(QString::fromStdString(mainParams[i]->GetName()), -30)
                                                .arg(newValue, 0, 'e', 6));
             }
 
-            progressWindow_->appendLog("Model parameters updated with optimized values.");
+            progressWindow_->AppendLog("Model parameters updated with optimized values.");
         }
 
         // Get results
@@ -1116,22 +1228,22 @@ void MainWindow::onRunDeterministicGA()
         const auto& paramNames = ga.getParamNames();
 
         // Update progress window with final results
-        progressWindow_->setProgress(1.0);
-        progressWindow_->setStatus("Optimization Complete!");
-        progressWindow_->appendLog("");
-        progressWindow_->appendLog("=== Optimization Complete ===");
-        progressWindow_->appendLog(QString("Best fitness: %1").arg(bestFitness, 0, 'e', 6));
-        progressWindow_->appendLog(QString("Results saved to: %1").arg(outputFolderPath));
-        progressWindow_->appendLog("");
-        progressWindow_->appendLog("Optimized parameter values:");
+        progressWindow_->SetProgress(1.0);
+        progressWindow_->SetStatus("Optimization Complete!");
+        progressWindow_->AppendLog("");
+        progressWindow_->AppendLog("=== Optimization Complete ===");
+        progressWindow_->AppendLog(QString("Best fitness: %1").arg(bestFitness, 0, 'e', 6));
+        progressWindow_->AppendLog(QString("Results saved to: %1").arg(outputFolderPath));
+        progressWindow_->AppendLog("");
+        progressWindow_->AppendLog("Optimized parameter values:");
 
         for (size_t i = 0; i < finalParams.size() && i < paramNames.size(); ++i) {
-            progressWindow_->appendLog(QString("  %1 = %2")
+            progressWindow_->AppendLog(QString("  %1 = %2")
                                            .arg(QString::fromStdString(paramNames[i]), -30)
                                            .arg(finalParams[i], 0, 'e', 6));
         }
 
-        progressWindow_->setComplete("Optimization Complete!");
+        progressWindow_->SetComplete("Optimization Complete!");
 
         // Update status bar
         statusBar()->showMessage(
@@ -1154,8 +1266,8 @@ void MainWindow::onRunDeterministicGA()
 
     } catch (const std::exception& e) {
         if (progressWindow_) {
-            progressWindow_->appendLog(QString("ERROR: %1").arg(e.what()));
-            progressWindow_->setComplete("Optimization Failed!");
+            progressWindow_->AppendLog(QString("ERROR: %1").arg(e.what()));
+            progressWindow_->SetComplete("Optimization Failed!");
         }
 
         QMessageBox::critical(this, "Optimization Error",
@@ -1171,4 +1283,209 @@ void MainWindow::onRunDeterministicGA()
 }
 
 
+QString MainWindow::getMCMCSettingsFilename(const QString& projectFilename)
+{
+    QFileInfo fileInfo(projectFilename);
+    QString baseName = fileInfo.completeBaseName();
+    QString path = fileInfo.absolutePath();
+    return path + "/" + baseName + ".mcmcsettings";
+}
 
+void MainWindow::onRunMCMC()
+{
+    // Check if model is loaded
+    if (gwaModel.Parameters().empty()) {
+        QMessageBox::warning(this, "No Model",
+                             "Please load a model file before running MCMC.");
+        return;
+    }
+
+    // Check if we have parameters to estimate
+    int numParams = gwaModel.Parameters().size();
+
+    if (numParams == 0) {
+        QMessageBox::warning(this, "No Parameters",
+                             "Please define at least one parameter to estimate.");
+        return;
+    }
+
+    // Check if we have a current file path
+    if (currentFilePath_.isEmpty()) {
+        QMessageBox::warning(this, "No File",
+                             "Please load or save a file first.");
+        return;
+    }
+
+    // ========================================================================
+    // Create output folder next to input file
+    // ========================================================================
+
+    QFileInfo inputFileInfo(currentFilePath_);
+    QString inputDir = inputFileInfo.absolutePath();
+    QString baseName = inputFileInfo.completeBaseName();
+
+    QString outputFolderName = QString("%1_MCMC_output").arg(baseName);
+    QString outputFolderPath = inputDir + "/" + outputFolderName;
+
+    QDir dir;
+    if (!dir.exists(outputFolderPath)) {
+        if (!dir.mkpath(outputFolderPath)) {
+            QMessageBox::critical(this, "Error",
+                                  QString("Failed to create output folder:\n%1").arg(outputFolderPath));
+            return;
+        }
+    }
+
+    // Set output paths for MCMC
+    mcmc.SetProperty("outputpath", outputFolderPath.toStdString() + "/");
+    mcmc.SetProperty("samples_filename", "mcmc_samples.txt");
+    mcmc.SetProperty("detail_filename", "mcmc_detail.txt");
+
+    // Get MCMC settings for display
+    const MCMCSettings& settings = mcmc.GetSettings();
+    int totalSamples = settings.total_number_of_samples;
+    int numChains = settings.number_of_chains;
+    int burnout = settings.burnout_samples;
+
+    // ========================================================================
+    // Create progress window
+    // ========================================================================
+
+    progressWindow_ = new ProgressWindow(this, "MCMC Sampling");
+    progressWindow_->SetProgressLabel("Sample Progress:");
+    progressWindow_->SetPrimaryChartTitle("Log Posterior");
+    progressWindow_->SetSecondaryChartTitle("Acceptance rate");
+    progressWindow_->SetPrimaryChartVisible(true);
+    progressWindow_->SetSecondaryChartVisible(true);  // Show MCMC-specific charts
+    progressWindow_->SetSecondaryProgressVisible(false);
+    progressWindow_->SetPrimaryChartYAxisTitle("Log posterior");
+    progressWindow_->SetSecondaryChartYAxisTitle("Acceptance rate");
+    progressWindow_->SetPrimaryChartXAxisTitle("Sample");
+    progressWindow_->SetSecondaryChartXAxisTitle("Sample");
+    // Set X-axis range to total number of samples
+    progressWindow_->SetPrimaryChartXRange(0, totalSamples);
+    progressWindow_->SetSecondaryChartXRange(0, totalSamples);
+
+
+    // Set the progress window in MCMC
+    mcmc.SetRunTimeWindow(progressWindow_);
+
+    // Show window
+    progressWindow_->show();
+    progressWindow_->SetStatus("Initializing MCMC...");
+    progressWindow_->AppendLog("Starting Markov Chain Monte Carlo Sampling");
+    progressWindow_->AppendLog(QString("Input file: %1").arg(inputFileInfo.fileName()));
+    progressWindow_->AppendLog(QString("Output folder: %1").arg(outputFolderName));
+    progressWindow_->AppendLog(QString("Total samples: %1").arg(totalSamples));
+    progressWindow_->AppendLog(QString("Number of chains: %1").arg(numChains));
+    progressWindow_->AppendLog(QString("Burnout samples: %1").arg(burnout));
+    progressWindow_->AppendLog(QString("Parameters to estimate: %1").arg(numParams));
+    progressWindow_->AppendLog("");
+
+    // Process events to show window
+    QApplication::processEvents();
+
+    try {
+        // Initialize MCMC (use false for non-random start from current values)
+        progressWindow_->SetStatus("Initializing chains...");
+        progressWindow_->AppendLog("Initializing MCMC chains...");
+        QApplication::processEvents();
+
+        mcmc.Initialize(false);
+
+        progressWindow_->SetStatus("Running MCMC sampling...");
+        progressWindow_->AppendLog("Starting MCMC sampling loop...");
+        progressWindow_->AppendLog("");
+        QApplication::processEvents();
+
+        // Run MCMC - progress updates happen automatically through ProgressWindow
+        mcmc.Perform();
+
+        // Get results
+        double acceptanceRate = mcmc.GetAcceptanceRate();
+        const auto& samples = mcmc.GetParameterSamples();
+
+        // Update progress window with final results
+        progressWindow_->SetProgress(1.0);
+        progressWindow_->SetStatus("MCMC Complete!");
+        progressWindow_->AppendLog("");
+        progressWindow_->AppendLog("=== MCMC Sampling Complete ===");
+        progressWindow_->AppendLog(QString("Total samples generated: %1").arg(totalSamples));
+        progressWindow_->AppendLog(QString("Acceptance rate: %1%").arg(acceptanceRate * 100.0, 0, 'f', 2));
+        progressWindow_->AppendLog(QString("Results saved to: %1").arg(outputFolderPath));
+        progressWindow_->AppendLog("");
+
+        // Calculate and display parameter statistics
+        if (!samples.empty() && samples.size() > burnout) {
+            progressWindow_->AppendLog("Parameter posterior statistics (after burnout):");
+
+            for (int i = 0; i < numParams; ++i) {
+                Parameter* param = gwaModel.Parameters()[i];
+                if (param) {
+                    // Calculate mean and std from samples (excluding burnout)
+                    double sum = 0.0;
+                    double sumSq = 0.0;
+                    int count = 0;
+
+                    for (size_t j = burnout; j < samples.size(); ++j) {
+                        if (i < samples[j].size()) {
+                            double val = samples[j][i];
+                            sum += val;
+                            sumSq += val * val;
+                            count++;
+                        }
+                    }
+
+                    if (count > 0) {
+                        double mean = sum / count;
+                        double variance = (sumSq / count) - (mean * mean);
+                        double stddev = sqrt(variance);
+
+                        progressWindow_->AppendLog(QString("  %1: mean = %2, std = %3")
+                                                       .arg(QString::fromStdString(param->GetName()), -30)
+                                                       .arg(mean, 0, 'e', 4)
+                                                       .arg(stddev, 0, 'e', 4));
+                    }
+                }
+            }
+        }
+
+        progressWindow_->SetComplete("MCMC Complete!");
+
+        // Update status bar
+        statusBar()->showMessage(
+            QString("MCMC Complete: Acceptance Rate = %1% | Output: %2")
+                .arg(acceptanceRate * 100.0, 0, 'f', 2)
+                .arg(outputFolderName),
+            10000
+            );
+
+        // Show results dialog
+        QString resultMsg = QString("MCMC Sampling Complete!\n\n");
+        resultMsg += QString("Acceptance Rate: %1%\n\n").arg(acceptanceRate * 100.0, 0, 'f', 2);
+        resultMsg += QString("Generated %1 samples across %2 chains\n")
+                         .arg(totalSamples)
+                         .arg(numChains);
+        resultMsg += QString("Estimated %1 parameters\n\n").arg(numParams);
+        resultMsg += QString("Results saved to:\n%1\n\n").arg(outputFolderPath);
+        resultMsg += "See progress window for detailed results and parameter statistics.";
+
+        QMessageBox::information(this, "MCMC Complete", resultMsg);
+
+    } catch (const std::exception& e) {
+        if (progressWindow_) {
+            progressWindow_->AppendLog(QString("ERROR: %1").arg(e.what()));
+            progressWindow_->SetComplete("MCMC Failed!");
+        }
+
+        QMessageBox::critical(this, "MCMC Error",
+                              QString("Error during MCMC:\n%1").arg(e.what()));
+    }
+
+    // Keep window open until user closes it
+    if (progressWindow_) {
+        progressWindow_->exec();
+        delete progressWindow_;
+        progressWindow_ = nullptr;
+    }
+}
