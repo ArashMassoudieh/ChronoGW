@@ -86,3 +86,4 @@ ChartWindow* ChartWindow::showChart(const TimeSeriesSet<double>& data,
 
     return window;
 }
+

@@ -60,7 +60,7 @@ unix:!macx {
     # Debug mode: disable OpenMP
     CONFIG(debug, debug|release) {
         DEFINES += NO_OPENMP
-        message(Debug mode: OpenMP disabled, NO_OPENMP defined)
+        message(Debug mode: OpenMP disabled)
     }
 }
 

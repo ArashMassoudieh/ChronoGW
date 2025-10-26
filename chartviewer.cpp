@@ -18,6 +18,7 @@ ChartViewer::ChartViewer(QWidget *parent)
     , plotMode_(Lines)
     , xAxisLabel_("Time")
     , yAxisLabel_("Value")
+    , yAxisStartAtZero_(false)
 {
     setupUI();
     initializeColorPalette();
@@ -56,24 +57,32 @@ void ChartViewer::setupToolbar()
     toolbar_->setIconSize(QSize(24, 24));
 
     // Copy action
-    copyAction_ = toolbar_->addAction(QIcon::fromTheme("edit-copy"), "Copy Data");
+    copyAction_ = toolbar_->addAction(QIcon(":/icons/copy.png"), "");
     copyAction_->setToolTip("Copy chart data to clipboard");
     connect(copyAction_, &QAction::triggered, this, &ChartViewer::onCopy);
 
     // Paste action
-    pasteAction_ = toolbar_->addAction(QIcon::fromTheme("edit-paste"), "Paste Data");
+    pasteAction_ = toolbar_->addAction(QIcon(":/icons/paste.png"), "");
     pasteAction_->setToolTip("Paste chart data from clipboard");
     connect(pasteAction_, &QAction::triggered, this, &ChartViewer::onPaste);
 
     toolbar_->addSeparator();
 
+    // Zoom extents action
+    QAction* zoomExtentsAction = toolbar_->addAction(QIcon(":/icons/zoom-extents.png"), "");
+    zoomExtentsAction->setToolTip("Zoom Extents");
+    zoomExtentsAction->setStatusTip("Reset zoom to show all data");
+    connect(zoomExtentsAction, &QAction::triggered, this, &ChartViewer::zoomExtents);
+
+    toolbar_->addSeparator();
+
     // Export PNG action
-    exportPngAction_ = toolbar_->addAction(QIcon::fromTheme("image-x-generic"), "Export PNG");
+    exportPngAction_ = toolbar_->addAction(QIcon(":/icons/export-png.png"), "");
     exportPngAction_->setToolTip("Export chart to PNG image");
     connect(exportPngAction_, &QAction::triggered, this, &ChartViewer::onExportPng);
 
     // Export CSV action
-    exportCsvAction_ = toolbar_->addAction(QIcon::fromTheme("text-csv"), "Export CSV");
+    exportCsvAction_ = toolbar_->addAction(QIcon(":/icons/export-csv.png"), "");
     exportCsvAction_->setToolTip("Export data to CSV file");
     connect(exportCsvAction_, &QAction::triggered, this, &ChartViewer::onExportCsv);
 
@@ -179,66 +188,79 @@ void ChartViewer::updateChart()
 
 void ChartViewer::createSeries()
 {
-    for (size_t i = 0; i < timeSeriesData_.size(); ++i) {
-        const TimeSeries<double>& ts = timeSeriesData_[i];
-        QString seriesName = QString::fromStdString(ts.name());
+    // Clear existing series
+    chart_->removeAllSeries();
+    lineSeries_.clear();
+    scatterSeries_.clear();
+    areaSeries_.clear();  // Clear area series
 
-        if (seriesName.isEmpty()) {
-            seriesName = QString("Series %1").arg(i);
-        }
+    if (timeSeriesData_.size() == 0) {
+        return;
+    }
 
-        // Initialize visibility (default: visible)
-        if (!seriesVisibility_.contains(seriesName)) {
-            seriesVisibility_[seriesName] = true;
-        }
+    for (int i = 0; i < timeSeriesData_.size(); ++i) {
+        QString seriesName = QString::fromStdString(timeSeriesData_.getSeriesName(i));
 
-        bool visible = seriesVisibility_[seriesName];
+        // Create appropriate series based on plot mode
+        if (plotMode_ == Filled) {
+            // Create line series for upper bound
+            QLineSeries* upperSeries = new QLineSeries();
+            upperSeries->setName(seriesName);
 
-        // Create line series if needed
-        if (plotMode_ == Lines || plotMode_ == LinesAndSymbols) {
-            QLineSeries* lineSeries = new QLineSeries();
-            lineSeries->setName(seriesName);
+            // Create line series for lower bound (at zero or y-min)
+            QLineSeries* lowerSeries = new QLineSeries();
 
-            for (size_t j = 0; j < ts.size(); ++j) {
-                double x = ts.getTime(j);
-                double y = ts.getValue(j);
-
-                // Skip invalid values for log scales
-                if ((xAxisLog_ && x <= 0) || (yAxisLog_ && y <= 0)) {
-                    continue;
-                }
-
-                lineSeries->append(x, y);
+            // Add data points
+            for (const auto& point : timeSeriesData_[i]) {
+                upperSeries->append(point.t, point.c);
+                lowerSeries->append(point.t, 0.0);  // Fill to zero
             }
 
-            lineSeries->setVisible(visible);
-            chart_->addSeries(lineSeries);
-            lineSeries_[seriesName] = lineSeries;
+            // Create area series
+            QAreaSeries* area = new QAreaSeries(upperSeries, lowerSeries);
+            area->setName(seriesName);
+            area->setOpacity(0.5);  // Semi-transparent fill
+
+            chart_->addSeries(area);
+            areaSeries_[seriesName] = area;
+
+            // Set visibility
+            area->setVisible(seriesVisibility_.value(seriesName, true));
+        }
+        else if (plotMode_ == Lines || plotMode_ == LinesAndSymbols) {
+            // Existing line series code
+            QLineSeries* series = new QLineSeries();
+            series->setName(seriesName);
+
+            for (const auto& point : timeSeriesData_[i]) {
+                series->append(point.t, point.c);
+            }
+
+            chart_->addSeries(series);
+            lineSeries_[seriesName] = series;
+            series->setVisible(seriesVisibility_.value(seriesName, true));
         }
 
-        // Create scatter series if needed
         if (plotMode_ == Symbols || plotMode_ == LinesAndSymbols) {
-            QScatterSeries* scatterSeries = new QScatterSeries();
-            scatterSeries->setName(seriesName + " (points)");
-            scatterSeries->setMarkerSize(8.0);
+            // Existing scatter series code
+            QScatterSeries* scatter = new QScatterSeries();
+            scatter->setName(seriesName);
+            scatter->setMarkerSize(8.0);
 
-            for (size_t j = 0; j < ts.size(); ++j) {
-                double x = ts.getTime(j);
-                double y = ts.getValue(j);
-
-                // Skip invalid values for log scales
-                if ((xAxisLog_ && x <= 0) || (yAxisLog_ && y <= 0)) {
-                    continue;
-                }
-
-                scatterSeries->append(x, y);
+            for (const auto& point : timeSeriesData_[i]) {
+                scatter->append(point.t, point.c);
             }
 
-            scatterSeries->setVisible(visible);
-            chart_->addSeries(scatterSeries);
-            scatterSeries_[seriesName] = scatterSeries;
+            chart_->addSeries(scatter);
+            scatterSeries_[seriesName] = scatter;
+            scatter->setVisible(seriesVisibility_.value(seriesName, true));
         }
     }
+
+    setupAxes();
+    applySeriesColors();
+    connectLegendMarkers();
+    updateAxesRanges();
 }
 
 void ChartViewer::setupAxes()
@@ -296,91 +318,79 @@ void ChartViewer::setupAxes()
 
 void ChartViewer::updateAxesRanges()
 {
-    if (timeSeriesData_.empty()) return;
+    if (timeSeriesData_.size() == 0 || !xAxis_ || !yAxis_) {
+        return;
+    }
 
-    double xMin = 1e100, xMax = -1e100;
-    double yMin = 1e100, yMax = -1e100;
+    // Calculate ranges from data
+    double xMin = std::numeric_limits<double>::max();
+    double xMax = std::numeric_limits<double>::lowest();
+    double yMin = std::numeric_limits<double>::max();
+    double yMax = std::numeric_limits<double>::lowest();
 
-    for (size_t i = 0; i < timeSeriesData_.size(); ++i) {
-        const TimeSeries<double>& ts = timeSeriesData_[i];
+    for (int i = 0; i < timeSeriesData_.size(); ++i) {
+        const QString seriesName = QString::fromStdString(timeSeriesData_.getSeriesName(i));
 
-        for (size_t j = 0; j < ts.size(); ++j) {
-            double x = ts.getTime(j);
-            double y = ts.getValue(j);
+        // Skip if series is hidden
+        if (!seriesVisibility_.value(seriesName, true)) {
+            continue;
+        }
 
-            // Skip invalid values for log scales
-            if (xAxisLog_ && x <= 0) continue;
-            if (yAxisLog_ && y <= 0) continue;
-
-            xMin = std::min(xMin, x);
-            xMax = std::max(xMax, x);
-            yMin = std::min(yMin, y);
-            yMax = std::max(yMax, y);
+        for (const auto& point : timeSeriesData_[i]) {
+            xMin = std::min(xMin, point.t);
+            xMax = std::max(xMax, point.t);
+            yMin = std::min(yMin, point.c);
+            yMax = std::max(yMax, point.c);
         }
     }
 
-    // Handle constant values (when min == max)
-    double xRange = xMax - xMin;
-    double yRange = yMax - yMin;
-
-    // If range is zero or very small, create a reasonable range around the value
-    if (xRange < 1e-10) {
-        double center = (xMax + xMin) / 2.0;
-        if (std::abs(center) < 1e-10) {
-            // Value is near zero
-            xMin = -1.0;
-            xMax = 1.0;
-        } else {
-            // Create range as percentage of the value
-            xMin = center * 0.9;
-            xMax = center * 1.1;
-        }
-        xRange = xMax - xMin;
+    // Handle case where all values are the same
+    if (xMin == xMax) {
+        // Add padding around single value
+        double padding = (std::abs(xMin) > 1e-10) ? std::abs(xMin) * 0.1 : 1.0;
+        xMin -= padding;
+        xMax += padding;
     }
 
-    if (yRange < 1e-10) {
-        double center = (yMax + yMin) / 2.0;
-        if (std::abs(center) < 1e-10) {
-            // Value is near zero
-            yMin = -1.0;
-            yMax = 1.0;
-        } else {
-            // Create range as percentage of the value
-            yMin = center * 0.9;
-            yMax = center * 1.1;
-        }
-        yRange = yMax - yMin;
+    if (yMin == yMax) {
+        // Add padding around single value
+        double padding = (std::abs(yMin) > 1e-10) ? std::abs(yMin) * 0.1 : 1.0;
+        yMin -= padding;
+        yMax += padding;
     }
 
-    // Add padding
+    // Force Y-axis to start at zero if enabled
+    if (yAxisStartAtZero_ && !yAxisLog_) {
+        yMin = std::max(yMin, 0.0);  // Ensure minimum is at least zero
+    }
+
+    // Add margin (5% on each side)
+    double xMargin = (xMax - xMin) * 0.05;
+    double yMargin = (yMax - yMin) * 0.05;
+
+    // For log scale, ensure positive values
     if (xAxisLog_) {
-        xMin *= 0.9;
-        xMax *= 1.1;
+        xMin = std::max(xMin - xMargin, 1e-10);
     } else {
-        xMin -= xRange * 0.05;
-        xMax += xRange * 0.05;
+        xMin -= xMargin;
     }
 
     if (yAxisLog_) {
-        yMin *= 0.9;
-        yMax *= 1.1;
+        yMin = std::max(yMin - yMargin, 1e-10);
     } else {
-        yMin -= yRange * 0.05;
-        yMax += yRange * 0.05;
+        yMin -= yMargin;
+        // Keep zero as minimum if option is enabled
+        if (yAxisStartAtZero_) {
+            yMin = std::max(yMin, 0.0);
+        }
     }
+
+    xMax += xMargin;
+    yMax += yMargin;
 
     // Set ranges
-    if (QValueAxis* axis = qobject_cast<QValueAxis*>(xAxis_)) {
-        axis->setRange(xMin, xMax);
-    } else if (QLogValueAxis* axis = qobject_cast<QLogValueAxis*>(xAxis_)) {
-        axis->setRange(xMin, xMax);
-    }
-
-    if (QValueAxis* axis = qobject_cast<QValueAxis*>(yAxis_)) {
-        axis->setRange(yMin, yMax);
-    } else if (QLogValueAxis* axis = qobject_cast<QLogValueAxis*>(yAxis_)) {
-        axis->setRange(yMin, yMax);
-    }
+    xAxis_->setRange(xMin, xMax);
+    yAxis_->setRange(yMin, yMax);
 }
 
 void ChartViewer::applySeriesColors()
@@ -434,11 +444,19 @@ void ChartViewer::setSeriesVisible(const QString& seriesName, bool visible)
 {
     seriesVisibility_[seriesName] = visible;
 
+    // Update line series visibility
     if (lineSeries_.contains(seriesName)) {
         lineSeries_[seriesName]->setVisible(visible);
     }
+
+    // Update scatter series visibility
     if (scatterSeries_.contains(seriesName)) {
         scatterSeries_[seriesName]->setVisible(visible);
+    }
+
+    // Update area series visibility
+    if (areaSeries_.contains(seriesName)) {
+        areaSeries_[seriesName]->setVisible(visible);
     }
 
     emit seriesVisibilityChanged(seriesName, visible);
@@ -529,16 +547,23 @@ void ChartViewer::onToggleYLog()
 
 void ChartViewer::onTogglePlotMode()
 {
-    // Cycle through modes: Lines -> Symbols -> LinesAndSymbols -> Lines
+    // Cycle through modes
     switch (plotMode_) {
     case Lines:
         setPlotMode(Symbols);
+        plotModeAction_->setText("Symbols");
         break;
     case Symbols:
         setPlotMode(LinesAndSymbols);
+        plotModeAction_->setText("Lines+Symbols");
         break;
     case LinesAndSymbols:
+        setPlotMode(Filled);
+        plotModeAction_->setText("Filled");
+        break;
+    case Filled:
         setPlotMode(Lines);
+        plotModeAction_->setText("Lines");
         break;
     }
 }
@@ -570,4 +595,32 @@ void ChartViewer::onLegendMarkerClicked()
     }
 
     emit seriesVisibilityChanged(seriesName, newVisible);
+}
+
+void ChartViewer::zoomExtents()
+{
+    if (!chart_) return;
+
+    // Reset axes to show all data
+    chart_->zoomReset();
+
+    // Recalculate and set proper ranges
+    updateAxesRanges();
+}
+
+void ChartViewer::setZoomEnabled(bool enabled)
+{
+    if (!chartView_) return;
+
+    if (enabled) {
+        chartView_->setRubberBand(QChartView::RectangleRubberBand);
+    } else {
+        chartView_->setRubberBand(QChartView::NoRubberBand);
+    }
+}
+
+void ChartViewer::setYAxisStartAtZero(bool startAtZero)
+{
+    yAxisStartAtZero_ = startAtZero;
+    updateAxesRanges();
 }

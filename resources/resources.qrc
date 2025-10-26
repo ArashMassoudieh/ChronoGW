@@ -7,5 +7,11 @@
         <file>icons/distribution.png</file>
         <file>icons/modeledvsmeasured.png</file>
         <file>icons/observeddata.png</file>
+        <file>icons/export-csv.png</file>
+        <file>icons/export-png.png</file>
+        <file>icons/zoom-extents.png</file>
+        <file>icons/copy.png</file>
+        <file>icons/paste.png</file>
+        <file>icons/open.png</file>
     </qresource>
 </RCC>

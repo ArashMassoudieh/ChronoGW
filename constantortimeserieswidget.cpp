@@ -19,13 +19,18 @@ ConstantOrTimeSeriesWidget::ConstantOrTimeSeriesWidget(QWidget *parent)
 
     lineEdit->installEventFilter(this);
 
-    loadButton = new QPushButton("📁", this);
+    loadButton = new QPushButton(this);
+    loadButton->setIcon(QIcon(":/icons/open.png"));
     loadButton->setToolTip("Load time series from file");
     loadButton->setMaximumWidth(30);
+    loadButton->setIconSize(QSize(20, 20));  // Adjust size as needed
 
-    viewButton = new QPushButton("📊", this);
+    // View button with custom icon
+    viewButton = new QPushButton(this);
+    viewButton->setIcon(QIcon(":/icons/observeddata.png"));
     viewButton->setToolTip("View time series chart");
     viewButton->setMaximumWidth(30);
+    viewButton->setIconSize(QSize(20, 20));  // Adjust size as needed
     viewButton->setEnabled(false);
 
     // Create layout

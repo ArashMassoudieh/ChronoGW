@@ -334,6 +334,8 @@ void ParameterDialog::onPlotPriorDistribution()
     }
 
     ChartWindow* chartWindow = ChartWindow::showChart(dataSet, title, this);
+    chartWindow->chartViewer()->setYAxisStartAtZero(true);
+    chartWindow->chartViewer()->setPlotMode(ChartViewer::Filled);
     chartWindow->setAxisLabels("Parameter Value", "Probability Density");
 }
 
@@ -530,5 +532,7 @@ void ParameterDialog::onPlotPosteriorDistribution()
 
     // Show in chart window
     ChartWindow* chartWindow = ChartWindow::showChart(dataSet, title, this);
+    chartWindow->chartViewer()->setYAxisStartAtZero(true);
+    chartWindow->chartViewer()->setPlotMode(ChartViewer::Filled);
     chartWindow->setAxisLabels("Parameter Value", "Probability Density");
 }

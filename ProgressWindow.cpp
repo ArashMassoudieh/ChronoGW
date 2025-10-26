@@ -442,14 +442,14 @@ void ProgressWindow::updatePrimaryChart()
         }
 
         // Add 10% padding
-        double range = maxVal - minVal;
+        /* double range = maxVal - minVal;
         if (range > 0) {
             minVal -= range * 0.1;
             maxVal += range * 0.1;
         } else {
             minVal -= 0.1;
             maxVal += 0.1;
-        }
+        }*/
 
         primaryAxisY_->setRange(minVal, maxVal);
     }
@@ -557,14 +557,14 @@ void ProgressWindow::updateSecondaryChart()
         }
 
         // Add 10% padding
-        double range = maxVal - minVal;
+        /*double range = maxVal - minVal;
         if (range > 0) {
             minVal -= range * 0.1;
             maxVal += range * 0.1;
         } else {
             minVal -= 0.1;
             maxVal += 0.1;
-        }
+        }*/
 
         secondaryAxisY_->setRange(minVal, maxVal);
     }

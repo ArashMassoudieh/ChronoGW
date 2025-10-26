@@ -14,6 +14,7 @@
 #include <QMenu>
 #include <QMap>
 #include "TimeSeriesSet.h"
+#include <QAreaSeries>
 
 
     /**
@@ -36,7 +37,8 @@ public:
     enum PlotMode {
         Lines,          ///< Line plot
         Symbols,        ///< Scatter plot (symbols only)
-        LinesAndSymbols ///< Both lines and symbols
+        LinesAndSymbols, ///< Both lines and symbols
+        Filled          ///< Filled area plot
     };
 
     explicit ChartViewer(QWidget *parent = nullptr);
@@ -104,6 +106,23 @@ public:
      */
     void exportToCsv(const QString& filename);
 
+    /**
+     * @brief Reset zoom to show all data (zoom extents)
+     */
+    void zoomExtents();
+
+    /**
+     * @brief Enable/disable zoom and pan interactions
+     * @param enabled true to enable zoom/pan
+     */
+    void setZoomEnabled(bool enabled);
+
+    /**
+    * @brief Force Y-axis to always start at zero (for positive-only data)
+    * @param startAtZero true to force Y-axis minimum to 0
+    */
+    void setYAxisStartAtZero(bool startAtZero);
+
 public slots:
     void onCopy();
     void onPaste();
@@ -149,6 +168,7 @@ private:
     // Series management
     QMap<QString, QLineSeries*> lineSeries_;
     QMap<QString, QScatterSeries*> scatterSeries_;
+    QMap<QString, QAreaSeries*> areaSeries_;
     QMap<QString, bool> seriesVisibility_;
 
     // Axes
@@ -165,6 +185,8 @@ private:
     // Colors for series
     QList<QColor> colorPalette_;
     void initializeColorPalette();
+
+    bool yAxisStartAtZero_;  // Force Y-axis to start at zero
 };
 
 #endif // CHARTVIEWER_H
