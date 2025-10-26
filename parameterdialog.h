@@ -39,10 +39,13 @@ private slots:
     void onAccepted();
     void onPriorDistributionChanged(const QString& dist);
     void onPlotPriorDistribution();
+    void onPlotMCMCChains();
+    void onPlotPosteriorDistribution();
 
 private:
     void setupUI();
     void loadParameterData(const Parameter* param);
+    void updateMCMCButtonsVisibility();
 
     // Model reference
     CGWA* gwa_;
@@ -57,6 +60,9 @@ private:
     QDoubleSpinBox* priorMeanSpinBox_;
     QDoubleSpinBox* priorStdSpinBox_;
     QPushButton* plotPriorButton_;
+    QPushButton* plotMCMCChainsButton_;
+    QPushButton* plotPosteriorButton_;
+    QGroupBox* mcmcResultsGroup_;
 
     QGroupBox* priorParamsGroup_;
 };

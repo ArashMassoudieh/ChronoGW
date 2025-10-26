@@ -292,11 +292,18 @@ void CGWA::loadParameters()
             auto range = param.GetRange();
             std::string dist = param.GetPriorDistribution();
 
-            if (dist == "normal" || dist == "log-normal") {
-                // For normal/log-normal: assume 95% of distribution within [low, high]
+            if (dist == "normal") {
+                // For normal: assume 95% of distribution within [low, high]
                 // This means ±2σ covers the range
                 double prior_mean = (range.low + range.high) / 2.0;
                 double prior_std = (range.high - range.low) / 4.0;  // ±2σ ≈ 95%
+                param.SetPriorParameters(prior_mean, prior_std);
+            }
+            else if (dist == "log-normal") {
+                // For log-normal: use geometric mean and log-space std
+                // The ±2σ in log-space covers [low, high]
+                double prior_mean = std::sqrt(range.low * range.high);  // Geometric mean
+                double prior_std = (std::log(range.high) - std::log(range.low)) / 4.0;  // ±2σ in log-space
                 param.SetPriorParameters(prior_mean, prior_std);
             }
 
@@ -815,6 +822,17 @@ double CGWA::calculateObservationLikelihood(size_t obs_index) const
 
     const TimeSeries<double>& observed = obs.GetObservedData();
     const TimeSeries<double>& modeled = modeled_data_[obs_index];
+
+    std::cout << "=== Observation Likelihood Debug ===" << std::endl;
+    std::cout << "Observation index: " << obs_index << std::endl;
+    std::cout << "std_dev (σ): " << std_dev << std::endl;
+    std::cout << "Observed data points: " << observed.size() << std::endl;
+    std::cout << "Modeled data points: " << modeled.size() << std::endl;
+    if (observed.size() > 0 && modeled.size() > 0) {
+        std::cout << "Observed[0]: t=" << observed[0].t << ", c=" << observed[0].c << std::endl;
+        std::cout << "Modeled[0]: t=" << modeled[0].t << ", c=" << modeled[0].c << std::endl;
+        std::cout << "Residual: " << (observed[0].c - modeled[0].c) << std::endl;
+    }
 
     // Data ratio for normalization
     double data_ratio = 1.0;

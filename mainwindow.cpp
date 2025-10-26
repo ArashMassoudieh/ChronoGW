@@ -1353,17 +1353,17 @@ void MainWindow::onRunMCMC()
 
     progressWindow_ = new ProgressWindow(this, "MCMC Sampling");
     progressWindow_->SetProgressLabel("Sample Progress:");
-    progressWindow_->SetPrimaryChartTitle("Log Posterior");
-    progressWindow_->SetSecondaryChartTitle("Acceptance rate");
+    progressWindow_->SetPrimaryChartTitle("Perturbation factor");
     progressWindow_->SetPrimaryChartVisible(true);
+    progressWindow_->SetPrimaryChartXRange(0, totalSamples);
+    progressWindow_->SetPrimaryChartYAxisTitle("Perturbation factor");
+    progressWindow_->SetPrimaryChartXAxisTitle("Sample");
+
     progressWindow_->SetSecondaryChartVisible(true);  // Show MCMC-specific charts
     progressWindow_->SetSecondaryProgressVisible(false);
-    progressWindow_->SetPrimaryChartYAxisTitle("Log posterior");
+    progressWindow_->SetSecondaryChartTitle("Acceptance rate");
     progressWindow_->SetSecondaryChartYAxisTitle("Acceptance rate");
-    progressWindow_->SetPrimaryChartXAxisTitle("Sample");
     progressWindow_->SetSecondaryChartXAxisTitle("Sample");
-    // Set X-axis range to total number of samples
-    progressWindow_->SetPrimaryChartXRange(0, totalSamples);
     progressWindow_->SetSecondaryChartXRange(0, totalSamples);
 
 
