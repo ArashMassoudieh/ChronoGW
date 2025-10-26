@@ -128,6 +128,52 @@ void ParameterDialog::setupUI()
     infoLabel->setStyleSheet("QLabel { color: #666; padding: 10px; }");
     mainLayout->addWidget(infoLabel);
 
+    mcmcResultsGroup_ = new QGroupBox(tr("MCMC Results"), this);
+    QVBoxLayout* mcmcLayout = new QVBoxLayout(mcmcResultsGroup_);
+
+    // MCMC Chains button
+    plotMCMCChainsButton_ = new QPushButton(this);
+    QIcon chainsIcon = QIcon::fromTheme("office-chart-line", QIcon(":/icons/chains.png"));
+    if (!chainsIcon.isNull()) {
+        plotMCMCChainsButton_->setIcon(chainsIcon);
+    }
+    plotMCMCChainsButton_->setToolTip(tr("Plot MCMC Chain Samples"));
+    plotMCMCChainsButton_->setIconSize(QSize(48, 48));
+    connect(plotMCMCChainsButton_, &QPushButton::clicked,
+            this, &ParameterDialog::onPlotMCMCChains);
+
+    // Posterior Distribution button
+    plotPosteriorButton_ = new QPushButton(this);
+    QIcon posteriorIcon = QIcon::fromTheme("office-chart-area", QIcon(":/icons/posterior.png"));
+    if (!posteriorIcon.isNull()) {
+        plotPosteriorButton_->setIcon(posteriorIcon);
+    }
+    plotPosteriorButton_->setToolTip(tr("Plot Posterior Distribution"));
+    plotPosteriorButton_->setIconSize(QSize(48, 48));
+    connect(plotPosteriorButton_, &QPushButton::clicked,
+            this, &ParameterDialog::onPlotPosteriorDistribution);
+
+    // Layout for buttons
+    QHBoxLayout* mcmcButtonsLayout = new QHBoxLayout();
+    mcmcButtonsLayout->addStretch();
+    mcmcButtonsLayout->addWidget(plotMCMCChainsButton_);
+    mcmcButtonsLayout->addWidget(plotPosteriorButton_);
+    mcmcButtonsLayout->addStretch();
+    mcmcLayout->addLayout(mcmcButtonsLayout);
+
+    // Info label
+    QLabel* mcmcInfoLabel = new QLabel(
+        tr("<i>MCMC results are available after running Markov Chain Monte Carlo sampling.</i>"),
+        this);
+    mcmcInfoLabel->setWordWrap(true);
+    mcmcInfoLabel->setStyleSheet("QLabel { color: #666; font-style: italic; padding: 5px; }");
+    mcmcLayout->addWidget(mcmcInfoLabel);
+
+    mainLayout->addWidget(mcmcResultsGroup_);
+
+    // Initially hide MCMC results group if no data
+    updateMCMCButtonsVisibility();
+
     // Dialog Buttons
     QDialogButtonBox* buttonBox = new QDialogButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
@@ -395,4 +441,94 @@ Parameter ParameterDialog::getParameter() const
     }
 
     return param;
+}
+
+void ParameterDialog::updateMCMCButtonsVisibility()
+{
+    // Only show MCMC results group if editing existing parameter
+    if (!param_) {
+        mcmcResultsGroup_->setVisible(false);
+        return;
+    }
+
+    // Always show the group for existing parameters
+    mcmcResultsGroup_->setVisible(true);
+
+    // Enable/disable individual buttons based on available data
+    bool hasMCMCChains = param_->hasMCMCSamples();
+    bool hasPosterior = param_->hasPosteriorDistribution();
+
+    plotMCMCChainsButton_->setEnabled(hasMCMCChains);
+    plotPosteriorButton_->setEnabled(hasPosterior);
+
+    // Update button text to indicate availability
+    if (hasMCMCChains) {
+        plotMCMCChainsButton_->setText(tr("Plot MCMC Chains"));
+    } else {
+        plotMCMCChainsButton_->setText(tr("Plot MCMC Chains (No Data)"));
+    }
+
+    if (hasPosterior) {
+        plotPosteriorButton_->setText(tr("Plot Posterior"));
+    } else {
+        plotPosteriorButton_->setText(tr("Plot Posterior (No Data)"));
+    }
+}
+
+void ParameterDialog::onPlotMCMCChains()
+{
+    if (!param_) {
+        QMessageBox::information(this, tr("No Data"),
+                                 tr("No MCMC chain data available."));
+        return;
+    }
+
+    // Get MCMC samples from parameter
+    // Assuming Parameter has a getter for mcmcSamples
+    const TimeSeriesSet<double>& mcmcSamples = param_->GetMCMCSamples();
+
+    if (mcmcSamples.size() == 0) {
+        QMessageBox::information(this, tr("No Data"),
+                                 tr("No MCMC chain samples available for this parameter."));
+        return;
+    }
+
+    // Create chart title
+    QString title = QString("MCMC Chains: %1")
+                        .arg(QString::fromStdString(param_->GetName()));
+
+    // Show in chart window
+    ChartWindow* chartWindow = ChartWindow::showChart(mcmcSamples, title, this);
+    chartWindow->setAxisLabels("Sample Number", "Parameter Value");
+}
+
+void ParameterDialog::onPlotPosteriorDistribution()
+{
+    if (!param_) {
+        QMessageBox::information(this, tr("No Data"),
+                                 tr("No posterior distribution data available."));
+        return;
+    }
+
+    // Get posterior distribution from parameter
+    // Assuming Parameter has a getter for posteriorDist
+    const TimeSeries<double>& posteriorDist = param_->GetPosteriorDistribution();
+
+    if (posteriorDist.size() == 0) {
+        QMessageBox::information(this, tr("No Data"),
+                                 tr("No posterior distribution available for this parameter."));
+        return;
+    }
+
+    // Create TimeSeriesSet with the distribution
+    TimeSeriesSet<double> dataSet;
+    dataSet.append(posteriorDist, "Posterior Distribution");
+
+    // Create chart title
+    QString title = QString("Posterior Distribution: %1")
+                        .arg(QString::fromStdString(param_->GetName()));
+
+    // Show in chart window
+    ChartWindow* chartWindow = ChartWindow::showChart(dataSet, title, this);
+    chartWindow->setAxisLabels("Parameter Value", "Probability Density");
 }

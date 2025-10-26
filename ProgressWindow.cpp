@@ -30,10 +30,12 @@ ProgressWindow::ProgressWindow(QWidget* parent, const QString& title)
     setupUI();
     createPrimaryChart();
     createSecondaryChart();
+    createTertiaryChart();
 
     // Default: Show primary chart, hide secondary
     SetPrimaryChartVisible(true);
     SetSecondaryChartVisible(false);
+    SetTertiaryChartVisible(false);
     SetSecondaryProgressVisible(false);
 }
 
@@ -616,4 +618,172 @@ void ProgressWindow::onCancelClicked()
     AppendLog("Cancel requested...");
     cancelButton_->setEnabled(false);
     emit cancelClicked();
+}
+
+// ========================================================================
+// Tertiary Chart Methods
+// ========================================================================
+
+void ProgressWindow::createTertiaryChart()
+{
+    tertiaryChart_ = new QChart();
+    tertiaryChart_->setTitle("Perturbation Coefficient");
+    tertiaryChart_->legend()->hide();
+    tertiaryChart_->setAnimationOptions(QChart::NoAnimation);
+
+    tertiarySeries_ = new QLineSeries();
+    tertiarySeries_->setName("Perturbation Coefficient");
+
+    // Create area series
+    QLineSeries* lowerBound = new QLineSeries();
+    lowerBound->append(0, 0);
+    tertiaryAreaSeries_ = new QAreaSeries(tertiarySeries_, lowerBound);
+    tertiaryAreaSeries_->setName("Perturbation Coefficient");
+    tertiaryAreaSeries_->setOpacity(0.3);
+    tertiaryAreaSeries_->setColor(QColor(150, 100, 200));
+
+    tertiaryChart_->addSeries(tertiaryAreaSeries_);
+    tertiaryChart_->addSeries(tertiarySeries_);
+
+    // X Axis
+    tertiaryAxisX_ = new QValueAxis();
+    tertiaryAxisX_->setTitleText("Sample");
+    tertiaryAxisX_->setLabelFormat("%d");
+    tertiaryChart_->addAxis(tertiaryAxisX_, Qt::AlignBottom);
+    tertiarySeries_->attachAxis(tertiaryAxisX_);
+    tertiaryAreaSeries_->attachAxis(tertiaryAxisX_);
+
+    // Y Axis
+    tertiaryAxisY_ = new QValueAxis();
+    tertiaryAxisY_->setTitleText("Coefficient");
+    tertiaryAxisY_->setLabelFormat("%.3f");
+    tertiaryAxisY_->setMin(0.0);
+    tertiaryAxisY_->setMax(1.0);
+    tertiaryChart_->addAxis(tertiaryAxisY_, Qt::AlignLeft);
+    tertiarySeries_->attachAxis(tertiaryAxisY_);
+    tertiaryAreaSeries_->attachAxis(tertiaryAxisY_);
+
+    tertiaryChartView_ = new QChartView(tertiaryChart_);
+    tertiaryChartView_->setRenderHint(QPainter::Antialiasing);
+    tertiaryChartView_->setMinimumHeight(200);
+
+    tertiaryAutoScale_ = true;
+}
+
+void ProgressWindow::AddTertiaryChartPoint(double x, double y)
+{
+    tertiaryData_.append(QPointF(x, y));
+    updateTertiaryChart();
+}
+
+void ProgressWindow::updateTertiaryChart()
+{
+    if (!tertiarySeries_) return;
+
+    tertiarySeries_->replace(tertiaryData_);
+
+    // Update area series lower bound
+    if (tertiaryAreaSeries_) {
+        QLineSeries* lowerSeries = qobject_cast<QLineSeries*>(tertiaryAreaSeries_->lowerSeries());
+        if (lowerSeries && tertiaryData_.size() > 0) {
+            lowerSeries->clear();
+            lowerSeries->append(tertiaryData_.first().x(), 0);
+            lowerSeries->append(tertiaryData_.last().x(), 0);
+        }
+    }
+
+    if (tertiaryAutoScale_ && tertiaryData_.size() > 0) {
+        // Auto-scale Y axis
+        double minY = std::numeric_limits<double>::max();
+        double maxY = std::numeric_limits<double>::lowest();
+
+        for (const QPointF& point : tertiaryData_) {
+            minY = std::min(minY, point.y());
+            maxY = std::max(maxY, point.y());
+        }
+
+        double margin = (maxY - minY) * 0.1;
+        if (margin < 0.01) margin = 0.1;
+
+        tertiaryAxisY_->setRange(std::max(0.0, minY - margin), maxY + margin);
+
+        // Auto-scale X axis
+        double minX = tertiaryData_.first().x();
+        double maxX = tertiaryData_.last().x();
+        tertiaryAxisX_->setRange(minX, maxX);
+    }
+}
+
+void ProgressWindow::ClearTertiaryChartData()
+{
+    tertiaryData_.clear();
+    if (tertiarySeries_) {
+        tertiarySeries_->clear();
+    }
+    if (tertiaryAreaSeries_) {
+        QLineSeries* lowerSeries = qobject_cast<QLineSeries*>(tertiaryAreaSeries_->lowerSeries());
+        if (lowerSeries) {
+            lowerSeries->clear();
+        }
+    }
+}
+
+void ProgressWindow::SetTertiaryChartYRange(double min, double max)
+{
+    if (tertiaryAxisY_) {
+        tertiaryAxisY_->setRange(min, max);
+    }
+}
+
+void ProgressWindow::SetTertiaryChartXRange(double min, double max)
+{
+    if (tertiaryAxisX_) {
+        tertiaryAxisX_->setRange(min, max);
+    }
+}
+
+void ProgressWindow::SetTertiaryChartAutoScale(bool enabled)
+{
+    tertiaryAutoScale_ = enabled;
+}
+
+void ProgressWindow::SetTertiaryChartTitle(const QString& title)
+{
+    if (tertiaryChart_) {
+        tertiaryChart_->setTitle(title);
+    }
+}
+
+void ProgressWindow::SetTertiaryChartXAxisTitle(const QString& title)
+{
+    if (tertiaryAxisX_) {
+        tertiaryAxisX_->setTitleText(title);
+    }
+}
+
+void ProgressWindow::SetTertiaryChartYAxisTitle(const QString& title)
+{
+    if (tertiaryAxisY_) {
+        tertiaryAxisY_->setTitleText(title);
+    }
+}
+
+void ProgressWindow::SetTertiaryChartColor(const QColor& color)
+{
+    if (tertiarySeries_) {
+        QPen pen = tertiarySeries_->pen();
+        pen.setColor(color);
+        pen.setWidth(2);
+        tertiarySeries_->setPen(pen);
+    }
+    if (tertiaryAreaSeries_) {
+        tertiaryAreaSeries_->setColor(color);
+    }
+}
+
+void ProgressWindow::SetTertiaryChartVisible(bool visible)
+{
+    if (tertiaryChartView_) {
+        tertiaryChartView_->setVisible(visible);
+    }
 }

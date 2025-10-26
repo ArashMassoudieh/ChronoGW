@@ -255,9 +255,17 @@ public:
     void SetSecondaryChartVisible(bool visible);
 
     /**
+     * @brief Set tertiary chart title
+     * @param title Chart title
+     */
+
+    void SetTertiaryChartVisible(bool visible);
+
+    /**
      * @brief Set secondary chart title
      * @param title Chart title
      */
+
     void SetSecondaryChartTitle(const QString& title);
 
     /**
@@ -277,6 +285,25 @@ public:
      * @param color Line color
      */
     void SetSecondaryChartColor(const QColor& color);
+
+    // Add these to the public section after secondary chart methods:
+
+    // ========================================================================
+    // Tertiary Chart Methods
+    // ========================================================================
+
+    void AddTertiaryChartPoint(double x, double y);
+    void ClearTertiaryChartData();
+    void SetTertiaryChartYRange(double min, double max);
+    void SetTertiaryChartXRange(double min, double max);
+    void SetTertiaryChartAutoScale(bool enabled);
+    void SetTertiaryChartTitle(const QString& title);
+    void SetTertiaryChartXAxisTitle(const QString& title);
+    void SetTertiaryChartYAxisTitle(const QString& title);
+    void SetTertiaryChartColor(const QColor& color);
+
+    // Add to the private section:
+    void updateTertiaryChart();
 
     // ========================================================================
     // Control Methods
@@ -335,6 +362,7 @@ private:
     void setupUI();
     void createPrimaryChart();
     void createSecondaryChart();
+    void createTertiaryChart();
     void updatePrimaryChart();
     void updateSecondaryChart();
 
@@ -372,6 +400,16 @@ private:
     QValueAxis* secondaryAxisY_;
     bool secondaryAutoScale_;
     QVector<QPointF> secondaryData_;
+
+
+    QChart* tertiaryChart_;
+    QChartView* tertiaryChartView_;
+    QLineSeries* tertiarySeries_;
+    QAreaSeries* tertiaryAreaSeries_;
+    QValueAxis* tertiaryAxisX_;
+    QValueAxis* tertiaryAxisY_;
+    bool tertiaryAutoScale_;
+    QVector<QPointF> tertiaryData_;
 
     // State
     bool pauseRequested_;
