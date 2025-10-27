@@ -63,12 +63,12 @@
   <PropertyGroup>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">release\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">release\</IntDir>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">GWA</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ChronoGW</TargetName>
     <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</IgnoreImportLibrary>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">debug\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">debug\</IntDir>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">GWA</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ChronoGW</TargetName>
     <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</IgnoreImportLibrary>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -105,7 +105,7 @@
       <IgnoreImportLibrary>true</IgnoreImportLibrary>
       <LinkIncremental>false</LinkIncremental>
       <OptimizeReferences>true</OptimizeReferences>
-      <OutputFile>$(OutDir)\GWA.exe</OutputFile>
+      <OutputFile>$(OutDir)\ChronoGW.exe</OutputFile>
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
       <SubSystem>Windows</SubSystem>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -168,7 +168,7 @@
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreImportLibrary>true</IgnoreImportLibrary>
-      <OutputFile>$(OutDir)\GWA.exe</OutputFile>
+      <OutputFile>$(OutDir)\ChronoGW.exe</OutputFile>
       <RandomizedBaseAddress>true</RandomizedBaseAddress>
       <SubSystem>Windows</SubSystem>
       <SuppressStartupBanner>true</SuppressStartupBanner>
