@@ -59,12 +59,33 @@ CGWA& CGWA::operator=(const CGWA& other)
 
 bool CGWA::loadFromFile(const std::string& filename)
 {
-    inverse_enabled_ = false;
+    // Extract directory from filename and set output path
+    std::string directory;
+    size_t lastSlash = filename.find_last_of("/\\");
+    if (lastSlash != std::string::npos) {
+        directory = filename.substr(0, lastSlash);
+    }
+    else {
+        directory = ".";  // Current directory if no path specified
+    }
 
-    if (!parseConfigFile(filename)) {
+    std::string outputPath = directory + "/outputs";
+
+    // Create the outputs directory if it doesn't exist
+    try {
+        std::filesystem::create_directories(outputPath);
+    }
+    catch (const std::filesystem::filesystem_error& e) {
+        std::cerr << "Error creating output directory: " << e.what() << std::endl;
         return false;
     }
 
+    SetOutputPath(outputPath);
+
+    inverse_enabled_ = false;
+    if (!parseConfigFile(filename)) {
+        return false;
+    }
     loadSettings();
     loadParameters();
     loadTracers();
@@ -72,10 +93,8 @@ bool CGWA::loadFromFile(const std::string& filename)
     loadObservedData();
     linkSourceTracers();
     updateConstantInputs();
-
     return true;
 }
-
 bool CGWA::parseConfigFile(const std::string& filename)
 {
     std::ifstream file(filename);
@@ -197,20 +216,8 @@ void CGWA::loadSettings()
         std::string key = aquiutils::tolower(config_data_.keywords[i]);
         const std::string& val = config_data_.values[i];
 
-        if (key == "path") {
-            settings_.input_path = val;
-        }
-        else if (key == "outpath") {
-            settings_.output_path = val;
-        }
-        else if (key == "pe_info") {
+        if (key == "pe_info") {
             settings_.pe_info_filename = val;
-        }
-        else if (key == "detout") {
-            settings_.det_output_filename = val;
-        }
-        else if (key == "realizedparam") {
-            settings_.realized_param_filename = val;
         }
         else if (key == "single_vz_delay") {
             settings_.single_vz_delay = (std::atoi(val.c_str()) != 0);
@@ -1001,11 +1008,6 @@ bool CGWA::exportToFile(const std::string& filename) const
     }
 
     file << std::fixed << std::setprecision(10);
-
-    // Write settings
-    file << "path=" << settings_.input_path << "\n";
-    file << "outpath=" << settings_.output_path << "\n";
-    file << "\n";
 
     // Write wells
     for (const auto& well : wells_) {

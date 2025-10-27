@@ -7,7 +7,7 @@
 #include <QPixmap>
 #include <QDebug>
 
-ChartViewer::ChartViewer(QWidget *parent)
+ChartViewer::ChartViewer(QWidget* parent)
     : QWidget(parent)
     , chart_(new QChart())
     , chartView_(new QChartView(chart_, this))
@@ -112,15 +112,15 @@ void ChartViewer::initializeColorPalette()
 {
     // Define a nice color palette for series
     colorPalette_ << QColor(31, 119, 180)   // Blue
-                  << QColor(255, 127, 14)   // Orange
-                  << QColor(44, 160, 44)    // Green
-                  << QColor(214, 39, 40)    // Red
-                  << QColor(148, 103, 189)  // Purple
-                  << QColor(140, 86, 75)    // Brown
-                  << QColor(227, 119, 194)  // Pink
-                  << QColor(127, 127, 127)  // Gray
-                  << QColor(188, 189, 34)   // Olive
-                  << QColor(23, 190, 207);  // Cyan
+        << QColor(255, 127, 14)   // Orange
+        << QColor(44, 160, 44)    // Green
+        << QColor(214, 39, 40)    // Red
+        << QColor(148, 103, 189)  // Purple
+        << QColor(140, 86, 75)    // Brown
+        << QColor(227, 119, 194)  // Pink
+        << QColor(127, 127, 127)  // Gray
+        << QColor(188, 189, 34)   // Olive
+        << QColor(23, 190, 207);  // Cyan
 }
 
 void ChartViewer::setData(const TimeSeriesSet<double>& data)
@@ -281,7 +281,8 @@ void ChartViewer::setupAxes()
         logAxis->setLabelFormat("%g");
         logAxis->setBase(10.0);
         xAxis_ = logAxis;
-    } else {
+    }
+    else {
         QValueAxis* valueAxis = new QValueAxis();
         valueAxis->setLabelFormat("%g");
         xAxis_ = valueAxis;
@@ -294,7 +295,8 @@ void ChartViewer::setupAxes()
         logAxis->setLabelFormat("%g");
         logAxis->setBase(10.0);
         yAxis_ = logAxis;
-    } else {
+    }
+    else {
         QValueAxis* valueAxis = new QValueAxis();
         valueAxis->setLabelFormat("%g");
         yAxis_ = valueAxis;
@@ -311,6 +313,10 @@ void ChartViewer::setupAxes()
         series->attachAxis(yAxis_);
     }
     for (QScatterSeries* series : scatterSeries_.values()) {
+        series->attachAxis(xAxis_);
+        series->attachAxis(yAxis_);
+    }
+    for (QAreaSeries* series : areaSeries_.values()) {
         series->attachAxis(xAxis_);
         series->attachAxis(yAxis_);
     }
@@ -371,13 +377,15 @@ void ChartViewer::updateAxesRanges()
     // For log scale, ensure positive values
     if (xAxisLog_) {
         xMin = std::max(xMin - xMargin, 1e-10);
-    } else {
+    }
+    else {
         xMin -= xMargin;
     }
 
     if (yAxisLog_) {
         yMin = std::max(yMin - yMargin, 1e-10);
-    } else {
+    }
+    else {
         yMin -= yMargin;
         // Keep zero as minimum if option is enabled
         if (yAxisStartAtZero_) {
@@ -410,6 +418,25 @@ void ChartViewer::applySeriesColors()
         colorIndex++;
     }
 
+    // Apply colors to area series
+    colorIndex = 0;
+    for (auto it = areaSeries_.begin(); it != areaSeries_.end(); ++it) {
+        QColor color = colorPalette_[colorIndex % colorPalette_.size()];
+
+        // Set pen color for border
+        QPen pen = it.value()->pen();
+        pen.setColor(color);
+        pen.setWidth(2);
+        it.value()->setPen(pen);
+
+        // Set brush color for fill (with transparency)
+        QColor fillColor = color;
+        fillColor.setAlpha(128);  // 50% transparency
+        it.value()->setBrush(fillColor);
+
+        colorIndex++;
+    }
+
     // Connect legend marker signals after series are added
     connectLegendMarkers();
 }
@@ -420,7 +447,7 @@ void ChartViewer::connectLegendMarkers()
     const auto markers = chart_->legend()->markers();
     for (QLegendMarker* marker : markers) {
         connect(marker, &QLegendMarker::clicked,
-                this, &ChartViewer::onLegendMarkerClicked);
+            this, &ChartViewer::onLegendMarkerClicked);
     }
 }
 
@@ -467,7 +494,7 @@ void ChartViewer::exportToPng(const QString& filename)
     QPixmap pixmap = chartView_->grab();
     if (!pixmap.save(filename, "PNG")) {
         QMessageBox::warning(this, "Export Failed",
-                             "Failed to export chart to PNG file.");
+            "Failed to export chart to PNG file.");
     }
 }
 
@@ -475,7 +502,7 @@ void ChartViewer::exportToCsv(const QString& filename)
 {
     if (timeSeriesData_.empty()) {
         QMessageBox::warning(this, "Export Failed",
-                             "No data to export.");
+            "No data to export.");
         return;
     }
 
@@ -483,16 +510,16 @@ void ChartViewer::exportToCsv(const QString& filename)
     timeSeriesData_.write(filename.toStdString(), ",");
 
     QMessageBox::information(this, "Export Successful",
-                             QString("Exported %1 time series to CSV file:\n%2")
-                                 .arg(timeSeriesData_.size())
-                                 .arg(filename));
+        QString("Exported %1 time series to CSV file:\n%2")
+        .arg(timeSeriesData_.size())
+        .arg(filename));
 }
 
 void ChartViewer::onCopy()
 {
     clipboard_ = timeSeriesData_;
     QMessageBox::information(this, "Copy",
-                             QString("Copied %1 time series to clipboard").arg(clipboard_.size()));
+        QString("Copied %1 time series to clipboard").arg(clipboard_.size()));
 }
 
 void ChartViewer::onPaste()
@@ -504,7 +531,7 @@ void ChartViewer::onPaste()
 
     setData(clipboard_);
     QMessageBox::information(this, "Paste",
-                             QString("Pasted %1 time series from clipboard").arg(clipboard_.size()));
+        QString("Pasted %1 time series from clipboard").arg(clipboard_.size()));
 }
 
 void ChartViewer::onExportPng()
@@ -514,7 +541,7 @@ void ChartViewer::onExportPng()
         tr("Export Chart to PNG"),
         QString(),
         tr("PNG Images (*.png);;All Files (*)")
-        );
+    );
 
     if (!filename.isEmpty()) {
         exportToPng(filename);
@@ -528,7 +555,7 @@ void ChartViewer::onExportCsv()
         tr("Export Data to CSV"),
         QString(),
         tr("CSV Files (*.csv);;Text Files (*.txt);;All Files (*)")
-        );
+    );
 
     if (!filename.isEmpty()) {
         exportToCsv(filename);
@@ -588,7 +615,8 @@ void ChartViewer::onLegendMarkerClicked()
         QFont font = marker->font();
         font.setStrikeOut(false);
         marker->setFont(font);
-    } else {
+    }
+    else {
         QFont font = marker->font();
         font.setStrikeOut(true);
         marker->setFont(font);
@@ -614,7 +642,8 @@ void ChartViewer::setZoomEnabled(bool enabled)
 
     if (enabled) {
         chartView_->setRubberBand(QChartView::RectangleRubberBand);
-    } else {
+    }
+    else {
         chartView_->setRubberBand(QChartView::NoRubberBand);
     }
 }

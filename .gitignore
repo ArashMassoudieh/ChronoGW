@@ -74,3 +74,7 @@ Outputs/GA_Output.txt
 .vs/ChronoGW_GUI/v17/
 
 .vs/ChronoGW_GUI/FileContentIndex/
+
+release/ChronoGW_GUI.tlog/
+
+release/
