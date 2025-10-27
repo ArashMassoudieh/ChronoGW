@@ -59,6 +59,19 @@ CGWA& CGWA::operator=(const CGWA& other)
 
 bool CGWA::loadFromFile(const std::string& filename)
 {
+    inverse_enabled_ = false;
+    if (!parseConfigFile(filename)) {
+        return false;
+    }
+    loadSettings();
+
+    loadParameters();
+    loadTracers();
+    loadWells();
+    loadObservedData();
+    linkSourceTracers();
+    updateConstantInputs();
+
     // Extract directory from filename and set output path
     std::string directory;
     size_t lastSlash = filename.find_last_of("/\\");
@@ -81,18 +94,6 @@ bool CGWA::loadFromFile(const std::string& filename)
     }
 
     SetOutputPath(outputPath);
-
-    inverse_enabled_ = false;
-    if (!parseConfigFile(filename)) {
-        return false;
-    }
-    loadSettings();
-    loadParameters();
-    loadTracers();
-    loadWells();
-    loadObservedData();
-    linkSourceTracers();
-    updateConstantInputs();
     return true;
 }
 bool CGWA::parseConfigFile(const std::string& filename)
@@ -236,10 +237,7 @@ void CGWA::loadSettings()
             settings_.project_interval = std::atof(val.c_str());
         }
     }
-
-    if (settings_.output_path.empty()) {
-        settings_.output_path = settings_.input_path;
-    }
+        
 }
 
 // ============================================================================

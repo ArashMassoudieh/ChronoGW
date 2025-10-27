@@ -39,6 +39,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionMCMC_Settings, &QAction::triggered, this, &MainWindow::onMCMCSettingsTriggered);
     connect(ui->actionDeterministic_GA, &QAction::triggered, this, &MainWindow::onRunDeterministicGA);
     connect(ui->actionBayesian_MCMC, &QAction::triggered, this, &MainWindow::onRunMCMC);
+    connect(ui->actionAbout, &QAction::triggered, this, &MainWindow::onAbout);
     recentFilesMenu = new QMenu("Recent Projects", this);
     ui->actionRecent_Projects->setMenu(recentFilesMenu);
     updateRecentFilesMenu();
@@ -1291,6 +1292,13 @@ QString MainWindow::getMCMCSettingsFilename(const QString& projectFilename)
     return path + "/" + baseName + ".mcmcsettings";
 }
 
+void MainWindow::onAbout()
+{
+    AboutDialog dialog(this);
+    dialog.setVersion("1.0.0");
+    dialog.exec();
+}
+
 void MainWindow::onRunMCMC()
 {
     // Check if model is loaded
@@ -1336,10 +1344,8 @@ void MainWindow::onRunMCMC()
         }
     }
 
-    // Set output paths for MCMC
-    mcmc.SetProperty("outputpath", outputFolderPath.toStdString() + "/");
     mcmc.SetProperty("samples_filename", "mcmc_samples.txt");
-    mcmc.SetProperty("detail_filename", "mcmc_detail.txt");
+    
 
     // Get MCMC settings for display
     const MCMCSettings& settings = mcmc.GetSettings();

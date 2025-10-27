@@ -204,6 +204,7 @@
     </QtUic>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AboutDialog.cpp" />
     <ClCompile Include="InverseModeling\src\GA\Binary.cpp" />
     <ClCompile Include="Utilities\Distribution.cpp" />
     <ClCompile Include="InverseModeling\src\GA\DistributionNUnif.cpp" />
@@ -242,6 +243,7 @@
     <ClCompile Include="welldialog.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <QtMoc Include="AboutDialog.h" />
     <ClInclude Include="InverseModeling\include\GA\Binary.h" />
     <ClInclude Include="InverseModeling\include\GA\Distribution.h" />
     <ClInclude Include="Utilities\Distribution.h" />
@@ -315,6 +317,9 @@
     <QtRcc Include="resources\resources.qrc" />
     <None Include="resources\icons\tracer.png" />
     <None Include="resources\icons\well.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="resources\icons\ChronoGW.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <Import Project="$(QtMsBuild)\qt.targets" Condition="Exists('$(QtMsBuild)\qt.targets')" />

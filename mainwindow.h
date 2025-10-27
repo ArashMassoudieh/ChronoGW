@@ -7,6 +7,7 @@
 #include "GA.h"
 #include "MCMC.h"
 #include "ProgressWindow.h"
+#include "AboutDialog.h"
 
 
 QT_BEGIN_NAMESPACE
@@ -43,6 +44,7 @@ private slots:
     void onMCMCSettingsTriggered();
     void onRunDeterministicGA();
     void onRunMCMC();
+    void onAbout();
 
 private:
     Ui::MainWindow *ui;

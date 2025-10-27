@@ -63,16 +63,7 @@ void ProgressWindow::setupUI()
     primaryProgressBar_->setFormat("%p%");
     mainLayout->addWidget(primaryProgressBar_);
 
-    // Secondary progress bar (initially hidden)
-    secondaryProgressLabel_ = new QLabel("Secondary Progress:", this);
-    mainLayout->addWidget(secondaryProgressLabel_);
-
-    secondaryProgressBar_ = new QProgressBar(this);
-    secondaryProgressBar_->setRange(0, 1000);
-    secondaryProgressBar_->setValue(0);
-    secondaryProgressBar_->setTextVisible(true);
-    secondaryProgressBar_->setFormat("%p%");
-    mainLayout->addWidget(secondaryProgressBar_);
+    // PRIMARY CHART will be inserted here at index 3
 
     // Chart placeholders (will be created later)
     primaryChartView_ = nullptr;
@@ -93,12 +84,28 @@ void ProgressWindow::setupUI()
         "padding: 5px; "
         "font-family: 'Courier New', monospace; "
         "}"
-        );
+    );
     mainLayout->addWidget(infoTextEdit_);
 
     // Initially hide info panel
     infoPanelLabel_->setVisible(false);
     infoTextEdit_->setVisible(false);
+
+    // Secondary progress bar - ADD AFTER INFO PANEL
+    // This way it naturally falls after primary chart when that's inserted
+    secondaryProgressLabel_ = new QLabel("Secondary Progress:", this);
+    secondaryProgressLabel_->setVisible(false);  // Initially hidden
+    mainLayout->addWidget(secondaryProgressLabel_);
+
+    secondaryProgressBar_ = new QProgressBar(this);
+    secondaryProgressBar_->setRange(0, 1000);
+    secondaryProgressBar_->setValue(0);
+    secondaryProgressBar_->setTextVisible(true);
+    secondaryProgressBar_->setFormat("%p%");
+    secondaryProgressBar_->setVisible(false);  // Initially hidden
+    mainLayout->addWidget(secondaryProgressBar_);
+
+    // SECONDARY CHART will be inserted after secondary progress bar
 
     // Log area
     QLabel* logLabel = new QLabel("Log:", this);
@@ -118,7 +125,6 @@ void ProgressWindow::setupUI()
 
     buttonLayout->addWidget(pauseResumeButton_);
     buttonLayout->addWidget(cancelButton_);
-
     mainLayout->addLayout(buttonLayout);
 
     // Connect signals
@@ -177,10 +183,10 @@ void ProgressWindow::createPrimaryChart()
     primaryChartView_->setRenderHint(QPainter::Antialiasing);
     primaryChartView_->setMinimumHeight(250);
 
-    // Add to layout (after secondary progress bar)
+    // Add to layout (after primary progress bar, index 3)
     QVBoxLayout* mainLayout = qobject_cast<QVBoxLayout*>(layout());
     if (mainLayout) {
-        mainLayout->insertWidget(4, primaryChartView_);
+        mainLayout->insertWidget(3, primaryChartView_);
     }
 }
 
@@ -235,10 +241,14 @@ void ProgressWindow::createSecondaryChart()
     secondaryChartView_->setRenderHint(QPainter::Antialiasing);
     secondaryChartView_->setMinimumHeight(250);
 
-    // Add to layout (after primary chart)
+    // Add to layout (after secondary progress bar)
     QVBoxLayout* mainLayout = qobject_cast<QVBoxLayout*>(layout());
     if (mainLayout) {
-        mainLayout->insertWidget(5, secondaryChartView_);
+        // Find where secondary progress bar is and insert chart right after it
+        int secondaryBarIndex = mainLayout->indexOf(secondaryProgressBar_);
+        if (secondaryBarIndex >= 0) {
+            mainLayout->insertWidget(secondaryBarIndex + 1, secondaryChartView_);
+        }
     }
 }
 
@@ -597,7 +607,8 @@ void ProgressWindow::onPauseResumeClicked()
         pauseResumeButton_->setText("Pause");
         AppendLog("Resumed");
         emit resumeClicked();
-    } else {
+    }
+    else {
         // Pause
         isPaused_ = true;
         pauseRequested_ = true;
@@ -668,6 +679,16 @@ void ProgressWindow::createTertiaryChart()
     tertiaryChartView_->setMinimumHeight(200);
 
     tertiaryAutoScale_ = true;
+
+    // Add to layout (after secondary chart if it exists)
+    QVBoxLayout* mainLayout = qobject_cast<QVBoxLayout*>(layout());
+    if (mainLayout) {
+        // Find where secondary chart view is and insert tertiary chart after it
+        int secondaryChartIndex = mainLayout->indexOf(secondaryChartView_);
+        if (secondaryChartIndex >= 0) {
+            mainLayout->insertWidget(secondaryChartIndex + 1, tertiaryChartView_);
+        }
+    }
 }
 
 void ProgressWindow::AddTertiaryChartPoint(double x, double y)
