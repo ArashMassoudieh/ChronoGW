@@ -4,7 +4,7 @@
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-
+    app.setWindowIcon(QIcon(":/icons/ChronoGW.png"));
     // Set application information
     QApplication::setApplicationName("GWA");
     QApplication::setApplicationVersion("1.0");

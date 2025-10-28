@@ -11,6 +11,7 @@
 
 #include <QtCore/QVariant>
 #include <QtGui/QAction>
+#include <QtGui/QIcon>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QMenu>
@@ -51,6 +52,9 @@ public:
         if (MainWindow->objectName().isEmpty())
             MainWindow->setObjectName("MainWindow");
         MainWindow->resize(800, 600);
+        QIcon icon;
+        icon.addFile(QString::fromUtf8("resources/icons/ChronoGW.png"), QSize(), QIcon::Mode::Normal, QIcon::State::Off);
+        MainWindow->setWindowIcon(icon);
         actionOpen = new QAction(MainWindow);
         actionOpen->setObjectName("actionOpen");
         actionSave = new QAction(MainWindow);
@@ -86,7 +90,7 @@ public:
         MainWindow->setCentralWidget(centralwidget);
         menubar = new QMenuBar(MainWindow);
         menubar->setObjectName("menubar");
-        menubar->setGeometry(QRect(0, 0, 800, 23));
+        menubar->setGeometry(QRect(0, 0, 800, 33));
         menuFile = new QMenu(menubar);
         menuFile->setObjectName("menuFile");
         menuParameter_Estimation = new QMenu(menubar);
