@@ -181,6 +181,28 @@ void ObservationDialog::setupUI()
     infoLabel->setStyleSheet("QLabel { color: #666; padding: 10px; }");
     mainLayout->addWidget(infoLabel);
 
+    // MCMC Post-processing buttons
+    QGroupBox* mcmcGroup = new QGroupBox("MCMC Results");
+    QVBoxLayout* mcmcLayout = new QVBoxLayout();
+
+    plotRealizationsButton_ = new QPushButton("Plot Realizations");
+    plotPercentilesButton_ = new QPushButton("Plot Percentiles");
+
+    // Initially disabled - will be enabled if data exists
+    plotRealizationsButton_->setEnabled(false);
+    plotPercentilesButton_->setEnabled(false);
+
+    mcmcLayout->addWidget(plotRealizationsButton_);
+    mcmcLayout->addWidget(plotPercentilesButton_);
+    mcmcGroup->setLayout(mcmcLayout);
+
+    // Add to main layout (adjust as needed for your layout structure)
+    mainLayout->addWidget(mcmcGroup);
+
+    // Connect signals
+    connect(plotRealizationsButton_, &QPushButton::clicked, this, &ObservationDialog::onPlotRealizations);
+    connect(plotPercentilesButton_, &QPushButton::clicked, this, &ObservationDialog::onPlotPercentiles);
+
     // Dialog Buttons
     QDialogButtonBox* buttonBox = new QDialogButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
@@ -241,6 +263,20 @@ void ObservationDialog::loadObservationData(const Observation* obs)
 
     // Set count max
     countMaxCheckBox_->setChecked(obs->GetCountMax());
+
+    // Enable MCMC plotting buttons if data exists
+    updateButtonStates();
+}
+
+void ObservationDialog::updateButtonStates()
+{
+    if (obs_) {
+        plotRealizationsButton_->setEnabled(obs_->GetRealizations().size() > 0);
+        plotPercentilesButton_->setEnabled(obs_->GetPercentile95().size() > 0);
+    } else {
+        plotRealizationsButton_->setEnabled(false);
+        plotPercentilesButton_->setEnabled(false);
+    }
 }
 
 void ObservationDialog::updateParameterList()
@@ -566,4 +602,70 @@ void ObservationDialog::onCalculateAndPlot()
         QMessageBox::critical(this, tr("Error"),
                               tr("Failed to calculate concentrations due to unknown error."));
     }
+}
+
+void ObservationDialog::onPlotRealizations()
+{
+    if (!obs_ || obs_->GetRealizations().size() == 0) {
+        QMessageBox::warning(this, "No Data", "No realizations available to plot.");
+        return;
+    }
+
+    // Create chart window
+    ChartWindow* window = new ChartWindow(this);
+    window->setWindowTitle("MCMC Realizations - " + QString::fromStdString(obs_->GetName()));
+    window->setChartTitle("MCMC Realizations - " + QString::fromStdString(obs_->GetName()));
+    window->setAxisLabels("Time", QString::fromStdString(obs_->GetQuantity()));
+
+    // Create combined dataset with observed data + realizations
+    TimeSeriesSet<double> plotData;
+
+    // Add observed data as first series
+    plotData.append(obs_->GetObservedData(), "Observed");
+
+    // Add all realizations
+    const TimeSeriesSet<double>& realizations = obs_->GetRealizations();
+    for (int i = 0; i < realizations.size(); ++i) {
+        plotData.append(realizations[i], "Realization_" + std::to_string(i + 1));
+    }
+    window->chartViewer()->setPlotMode(ChartViewer::PlotMode::Symbols);
+    window->setData(plotData);
+    window->show();
+}
+
+void ObservationDialog::onPlotPercentiles()
+{
+    if (!obs_ || obs_->GetPercentile95().size() == 0) {
+        QMessageBox::warning(this, "No Data", "No percentiles available to plot.");
+        return;
+    }
+
+    // Create chart window
+    ChartWindow* window = new ChartWindow(this);
+    window->setWindowTitle("MCMC Prediction Intervals - " + QString::fromStdString(obs_->GetName()));
+    window->setChartTitle("MCMC Prediction Intervals - " + QString::fromStdString(obs_->GetName()));
+    window->setAxisLabels("Time", QString::fromStdString(obs_->GetQuantity()));
+
+    // Create combined dataset
+    TimeSeriesSet<double> plotData;
+
+    // Add observed data
+    plotData.append(obs_->GetObservedData(), "Observed");
+
+    // Add percentiles (typically 2.5%, 50%, 97.5%)
+    const TimeSeriesSet<double>& percentiles = obs_->GetPercentile95();
+    if (percentiles.size() >= 3) {
+        plotData.append(percentiles[0], "Mean");
+        plotData.append(percentiles[1], "2.5%");
+        plotData.append(percentiles[2], "Median (50%)");
+        plotData.append(percentiles[3], "97.5%");
+    } else {
+        // Add whatever percentiles are available
+        for (int i = 0; i < percentiles.size(); ++i) {
+            plotData.append(percentiles[i], "Percentile_" + std::to_string(i + 1));
+        }
+    }
+    window->chartViewer()->setPlotMode(ChartViewer::PlotMode::Symbols);
+    window->setData(plotData);
+    window->show();
 }

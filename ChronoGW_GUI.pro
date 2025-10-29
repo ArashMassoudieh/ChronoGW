@@ -20,6 +20,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 DEFINES += Q_JSON_SUPPORT
 DEFINES += Q_GUI_SUPPORT
 
+DEFINES += GWA;
 DEFINES += GSL
 DEFINES += _arma
 
@@ -81,6 +82,7 @@ macx {
 #-------------------------------------------------
 
 SOURCES += \
+    AboutDialog.cpp \
     GASettingsDialog.cpp \
     GWA.cpp \
     IconListWidget.cpp \
@@ -122,6 +124,7 @@ SOURCES += \
 #-------------------------------------------------
 
 HEADERS += \
+    AboutDialog.h \
     GA.h \
     GASettingsDialog.h \
     GWA.h \

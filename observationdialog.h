@@ -37,12 +37,21 @@ public:
      */
     Observation getObservation() const;
 
+    /**
+     * @brief Update button states based on current observation data
+     *
+     * Call this after MCMC completes to enable plotting buttons
+     */
+    void updateButtonStates();
+
 private slots:
     void onAccepted();
     void onBrowseObservedData();
     void onDetectionLimitToggled(bool checked);
     void onPlotObservedData();
     void onCalculateAndPlot();
+    void onPlotRealizations();
+    void onPlotPercentiles();
 
 private:
     void setupUI();
@@ -68,6 +77,9 @@ private:
     QDoubleSpinBox* detectionLimitSpinBox_;
     QCheckBox* countMaxCheckBox_;
     QPushButton* calculatePlotButton_;
+
+    QPushButton* plotRealizationsButton_;
+    QPushButton* plotPercentilesButton_;
 };
 
 #endif // OBSERVATIONDIALOG_H

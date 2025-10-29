@@ -1,6 +1,3 @@
-path=
-outpath=/home/arash/Projects/ChronoGW/test1_inverse_GA_output/
-
 well=Well, {param[0]=p[Mean_age];distribution=Exponential}
 
 tracer=Dummy, {decay=0.5000000000;input=/home/arash/Projects/ChronoGW/constant_input.txt}
