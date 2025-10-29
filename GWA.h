@@ -147,12 +147,20 @@ public:
         return reinterpret_cast<std::vector<Observation>*>(&observations_);
     }
 
+    std::vector<CWell>* Wells() {
+        return reinterpret_cast<std::vector<CWell>*>(&wells_);
+    }
+
     /**
      * @brief Get const pointer to observations vector as base Observation type
      * @return Const pointer to vector of Observation
      */
     const std::vector<Observation>* Observations() const {
         return reinterpret_cast<const std::vector<Observation>*>(&observations_);
+    }
+
+    const std::vector<CWell>* Wells() const {
+        return reinterpret_cast<const std::vector<CWell>*>(&wells_);
     }
 
     CTracer& getTracerMutable(size_t index) { return tracers_[index]; }

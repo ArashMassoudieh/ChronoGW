@@ -46,6 +46,15 @@ private slots:
     void onDistributionTypeChanged(const QString& type);
     void onAccepted();
     void onPlotDistribution();
+    /**
+     * @brief Plot MCMC realizations for this well
+     */
+    void onPlotRealizations();
+
+    /**
+     * @brief Plot MCMC prediction intervals (percentiles)
+     */
+    void onPlotPercentiles();
 
 private:
     void setupUI();
@@ -69,6 +78,8 @@ private:
     QFormLayout* distributionParamsLayout;
     QVector<ParameterValueWidget*> distributionParamWidgets;
     QPushButton* plotDistributionButton_;
+    QPushButton* plotRealizationsButton_;
+    QPushButton* plotPercentilesButton_;
 
     ParameterValueWidget* fractionOldWidget;
     ParameterValueWidget* ageOldWidget;

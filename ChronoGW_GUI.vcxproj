@@ -84,7 +84,7 @@
       <ObjectFileName>release\</ObjectFileName>
       <OpenMPSupport>true</OpenMPSupport>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;QT_DEPRECATED_WARNINGS;Q_JSON_SUPPORT;Q_GUI_SUPPORT;GSL;_arma;_WINDOWS;NDEBUG;QT_NO_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;QT_DEPRECATED_WARNINGS;Q_JSON_SUPPORT;Q_GUI_SUPPORT;GSL;_arma;GWA;NDEBUG;QT_NO_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <ProgramDataBaseFileName>
       </ProgramDataBaseFileName>
@@ -152,7 +152,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ObjectFileName>debug\</ObjectFileName>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;QT_DEPRECATED_WARNINGS;Q_JSON_SUPPORT;Q_GUI_SUPPORT;GSL;_arma;_WINDOWS;NO_OPENMP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;QT_DEPRECATED_WARNINGS;Q_JSON_SUPPORT;Q_GUI_SUPPORT;GSL;_arma;GWA;NO_OPENMP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <SuppressStartupBanner>true</SuppressStartupBanner>

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TimeSeries.h"
+#include "TimeSeriesSet.h"
 #include <string>
 #include <vector>
 
@@ -316,7 +317,35 @@ public:
         return 0;
     }
 
+    /**
+     * @brief Store ensemble realizations from uncertainty analysis
+     * @param real TimeSeriesSet with multiple model realizations
+     *
+     * Each time series in the set represents one realization using
+     * parameters sampled from the posterior distribution.
+     */
+    void SetRealizations(const TimeSeriesSet<double>& real);
 
+    /**
+     * @brief Store prediction interval percentiles
+     * @param pct TimeSeriesSet with percentile time series
+     *
+     * Typically contains 2.5%, 50% (median), and 97.5% percentiles
+     * to represent 95% prediction intervals.
+     */
+    void SetPercentile95(const TimeSeriesSet<double>& pct);
+
+    /**
+     * @brief Get stored realizations
+     * @return TimeSeriesSet with all realizations
+     */
+    const TimeSeriesSet<double>& GetRealizations() const;
+
+    /**
+     * @brief Get stored percentiles
+     * @return TimeSeriesSet with percentile time series
+     */
+    const TimeSeriesSet<double>& GetPercentile95() const;
 private:
     // ========================================================================
     // Member Variables (will eventually replace public ones above)
@@ -337,4 +366,8 @@ private:
     // Histogram-specific parameters
     int histogram_bin_count_;               ///< Number of histogram bins
     double histogram_bin_size_;             ///< Size of each histogram bin
+
+    //MCMC variables
+    TimeSeriesSet<double> realizations;     ///< Ensemble realizations
+    TimeSeriesSet<double> percentile95;     ///< Prediction intervals
 };

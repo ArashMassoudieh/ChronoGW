@@ -534,6 +534,22 @@ TimeSeries<double> CWell::createGeneralizedInverseGaussianDistribution(
     return (1.0 / area) * age_dist;
 }
 
+void CWell::SetRealizations(const TimeSeriesSet<double>& real) {
+    realizations = real;
+}
+
+void CWell::SetPercentile95(const TimeSeriesSet<double>& pct) {
+    percentile95 = pct;
+}
+
+const TimeSeriesSet<double>& CWell::GetRealizations() const {
+    return realizations;
+}
+
+const TimeSeriesSet<double>& CWell::GetPercentile95() const {
+    return percentile95;
+}
+
 TimeSeries<double> CWell::createDispersionDistribution(
     const std::vector<double>& params,
     double max_age,

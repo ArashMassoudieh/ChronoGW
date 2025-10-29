@@ -33,7 +33,16 @@ WellDialog::WellDialog(CGWA* gwa, CWell* well, QWidget* parent)
     // Load data if editing existing well
     if (well_) {
         loadWellData(well_);
-    } else {
+
+        // Enable MCMC plot buttons if data exists
+        if (well_->GetRealizations().size() > 0) {
+            plotRealizationsButton_->setEnabled(true);
+        }
+        if (well_->GetPercentile95().size() > 0) {
+            plotPercentilesButton_->setEnabled(true);
+        }
+    }
+    else {
         onDistributionTypeChanged(distributionTypeCombo->currentText());
     }
 }
@@ -108,6 +117,25 @@ void WellDialog::setupUI()
     mixingLayout->addRow(tr("Vadose Zone Delay:"), vzDelayWidget);
 
     mainLayout->addWidget(mixingGroup);
+
+    // MCMC Results Group
+    QGroupBox* mcmcGroup = new QGroupBox(tr("MCMC Results"), this);
+    QHBoxLayout* mcmcLayout = new QHBoxLayout(mcmcGroup);
+
+    plotRealizationsButton_ = new QPushButton(tr("Plot Realizations"), this);
+    plotRealizationsButton_->setToolTip(tr("Plot ensemble realizations from MCMC uncertainty analysis"));
+    plotRealizationsButton_->setEnabled(false);  // Will be enabled if data exists
+    connect(plotRealizationsButton_, &QPushButton::clicked, this, &WellDialog::onPlotRealizations);
+
+    plotPercentilesButton_ = new QPushButton(tr("Plot Percentiles"), this);
+    plotPercentilesButton_->setToolTip(tr("Plot 95% prediction intervals from MCMC analysis"));
+    plotPercentilesButton_->setEnabled(false);  // Will be enabled if data exists
+    connect(plotPercentilesButton_, &QPushButton::clicked, this, &WellDialog::onPlotPercentiles);
+
+    mcmcLayout->addWidget(plotRealizationsButton_);
+    mcmcLayout->addWidget(plotPercentilesButton_);
+
+    mainLayout->addWidget(mcmcGroup);
 
     // Dialog Buttons
     QDialogButtonBox* buttonBox = new QDialogButtonBox(
@@ -478,4 +506,77 @@ void WellDialog::onPlotDistribution()
         );
 
     chartWindow->setAxisLabels("Age (years)", "Probability Density");
+}
+
+void WellDialog::onPlotRealizations()
+{
+    if (!well_ || well_->GetRealizations().size() == 0) {
+        QMessageBox::warning(this, tr("No Data"),
+            tr("No realizations available to plot."));
+        return;
+    }
+
+    // Create chart window
+    ChartWindow* window = new ChartWindow(this);
+    window->setWindowTitle(tr("Age Distribution Realizations - %1")
+        .arg(QString::fromStdString(well_->getName())));
+    window->setChartTitle(tr("MCMC Realizations - %1")
+        .arg(QString::fromStdString(well_->getName())));
+    window->setAxisLabels("Age (years)", "Probability Density");
+
+    // Get realizations
+    const TimeSeriesSet<double>& realizations = well_->GetRealizations();
+
+    // Create plot data
+    TimeSeriesSet<double> plotData;
+
+    // Add all realizations
+    for (int i = 0; i < realizations.size(); ++i) {
+        plotData.append(realizations[i], "Realization_" + std::to_string(i + 1));
+    }
+
+    window->chartViewer()->setPlotMode(ChartViewer::PlotMode::Lines);
+    window->setData(plotData);
+    window->show();
+}
+
+void WellDialog::onPlotPercentiles()
+{
+    if (!well_ || well_->GetPercentile95().size() == 0) {
+        QMessageBox::warning(this, tr("No Data"),
+            tr("No percentiles available to plot."));
+        return;
+    }
+
+    // Create chart window
+    ChartWindow* window = new ChartWindow(this);
+    window->setWindowTitle(tr("Age Distribution Prediction Intervals - %1")
+        .arg(QString::fromStdString(well_->getName())));
+    window->setChartTitle(tr("MCMC Prediction Intervals - %1")
+        .arg(QString::fromStdString(well_->getName())));
+    window->setAxisLabels("Age (years)", "Probability Density");
+
+    // Get percentiles
+    const TimeSeriesSet<double>& percentiles = well_->GetPercentile95();
+
+    // Create plot data
+    TimeSeriesSet<double> plotData;
+
+    // Add percentiles (typically mean, 2.5%, median, 97.5%)
+    if (percentiles.size() >= 4) {
+        plotData.append(percentiles[0], "Mean");
+        plotData.append(percentiles[1], "2.5%");
+        plotData.append(percentiles[2], "Median (50%)");
+        plotData.append(percentiles[3], "97.5%");
+    }
+    else {
+        // Add whatever percentiles are available
+        for (int i = 0; i < percentiles.size(); ++i) {
+            plotData.append(percentiles[i], "Percentile_" + std::to_string(i + 1));
+        }
+    }
+
+    window->chartViewer()->setPlotMode(ChartViewer::PlotMode::Lines);
+    window->setData(plotData);
+    window->show();
 }

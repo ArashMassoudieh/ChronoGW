@@ -2,7 +2,7 @@ well=Well, {param[0]=p[Mean_age];distribution=Exponential}
 
 tracer=Dummy, {decay=0.5000000000;input=C:/Projects/ChronoGW/constant_input.txt}
 
-observed=Obs, {well=Well; tracer=Dummy; std_param=STD_obs; error_structure=normal; observed_data=C:/Projects/ChronoGW/dummy_observed.txt}
+observed=Obs, {well=Well; tracer=Dummy; std_param=STD_obs; error_structure=normal; observed_data=C:/Projects/ChronoGW/dummy_observed.txt; count_max=1}
 
 
 parameter=STD_obs, {low=0.1000000000;high=10.0000000000; prior_distribution=log-normal; value=0.1000000000}
