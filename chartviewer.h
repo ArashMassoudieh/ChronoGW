@@ -123,6 +123,12 @@ public:
     */
     void setYAxisStartAtZero(bool startAtZero);
 
+    /**
+     * @brief Force X-axis to always start at zero (for positive-only data)
+     * @param startAtZero true to force X-axis minimum to 0
+     */
+    void setXAxisStartAtZero(bool startAtZero);
+
 public slots:
     void onCopy();
     void onPaste();
@@ -187,6 +193,7 @@ private:
     void initializeColorPalette();
 
     bool yAxisStartAtZero_;  // Force Y-axis to start at zero
+    bool xAxisStartAtZero_;  // Force X-axis to start at zero
 };
 
 #endif // CHARTVIEWER_H

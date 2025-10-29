@@ -19,6 +19,7 @@ ChartViewer::ChartViewer(QWidget* parent)
     , xAxisLabel_("Time")
     , yAxisLabel_("Value")
     , yAxisStartAtZero_(false)
+    , xAxisStartAtZero_(false)
 {
     setupUI();
     initializeColorPalette();
@@ -336,12 +337,10 @@ void ChartViewer::updateAxesRanges()
 
     for (int i = 0; i < timeSeriesData_.size(); ++i) {
         const QString seriesName = QString::fromStdString(timeSeriesData_.getSeriesName(i));
-
         // Skip if series is hidden
         if (!seriesVisibility_.value(seriesName, true)) {
             continue;
         }
-
         for (const auto& point : timeSeriesData_[i]) {
             xMin = std::min(xMin, point.t);
             xMax = std::max(xMax, point.t);
@@ -357,7 +356,6 @@ void ChartViewer::updateAxesRanges()
         xMin -= padding;
         xMax += padding;
     }
-
     if (yMin == yMax) {
         // Add padding around single value
         double padding = (std::abs(yMin) > 1e-10) ? std::abs(yMin) * 0.1 : 1.0;
@@ -365,41 +363,41 @@ void ChartViewer::updateAxesRanges()
         yMax += padding;
     }
 
-    // Force Y-axis to start at zero if enabled
-    if (yAxisStartAtZero_ && !yAxisLog_) {
-        yMin = std::max(yMin, 0.0);  // Ensure minimum is at least zero
-    }
-
     // Add margin (5% on each side)
     double xMargin = (xMax - xMin) * 0.05;
     double yMargin = (yMax - yMin) * 0.05;
 
-    // For log scale, ensure positive values
+    // Handle X-axis scaling
     if (xAxisLog_) {
         xMin = std::max(xMin - xMargin, 1e-10);
     }
     else {
         xMin -= xMargin;
+        // Force X-axis to start at zero if enabled
+        if (xAxisStartAtZero_) {
+            xMin = std::max(xMin, 0.0);
+        }
     }
+    xMax += xMargin;
 
+    // Handle Y-axis scaling
     if (yAxisLog_) {
         yMin = std::max(yMin - yMargin, 1e-10);
     }
     else {
         yMin -= yMargin;
-        // Keep zero as minimum if option is enabled
+        // Force Y-axis to start at zero if enabled
         if (yAxisStartAtZero_) {
             yMin = std::max(yMin, 0.0);
         }
     }
-
-    xMax += xMargin;
     yMax += yMargin;
 
     // Set ranges
     xAxis_->setRange(xMin, xMax);
     yAxis_->setRange(yMin, yMax);
 }
+
 
 void ChartViewer::applySeriesColors()
 {
@@ -652,4 +650,10 @@ void ChartViewer::setYAxisStartAtZero(bool startAtZero)
 {
     yAxisStartAtZero_ = startAtZero;
     updateAxesRanges();
+}
+
+void ChartViewer::setXAxisStartAtZero(bool startAtZero)
+{
+    xAxisStartAtZero_ = startAtZero;
+    updateAxesRanges();  // Recalculate axis ranges with new constraint
 }

@@ -535,6 +535,8 @@ void WellDialog::onPlotRealizations()
         plotData.append(realizations[i], "Realization_" + std::to_string(i + 1));
     }
 
+    window->chartViewer()->setYAxisStartAtZero(true);
+    window->chartViewer()->setXAxisStartAtZero(true);
     window->chartViewer()->setPlotMode(ChartViewer::PlotMode::Lines);
     window->setData(plotData);
     window->show();
@@ -575,7 +577,8 @@ void WellDialog::onPlotPercentiles()
             plotData.append(percentiles[i], "Percentile_" + std::to_string(i + 1));
         }
     }
-
+    window->chartViewer()->setYAxisStartAtZero(true);
+    window->chartViewer()->setXAxisStartAtZero(true);
     window->chartViewer()->setPlotMode(ChartViewer::PlotMode::Lines);
     window->setData(plotData);
     window->show();
