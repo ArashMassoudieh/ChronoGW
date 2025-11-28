@@ -110,18 +110,22 @@ private slots:
     void onLineEditChanged();
     void onLoadButtonClicked();
     void onViewButtonClicked();
+    void onEditButtonClicked();
 
 private:
-    QLineEdit* lineEdit;
-    QPushButton* loadButton;
-    QPushButton* viewButton;
-    QHBoxLayout* layout;
 
-    bool isConstant;
+    QLineEdit* lineEdit = nullptr;
+    QPushButton* loadButton = nullptr;
+    QPushButton* editButton = nullptr;
+    QPushButton* viewButton = nullptr;
+    QHBoxLayout* layout = nullptr;
+
+    bool isConstant = true;
     QString timeSeriesFilename;
     TimeSeries<double> timeSeries;
 
     void updateViewButtonState();
+    void updateEditButtonState();
 };
 
 #endif // CONSTANTORTIMESERIESWIDGET_H

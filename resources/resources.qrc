@@ -14,5 +14,6 @@
         <file>icons/paste.png</file>
         <file>icons/open.png</file>
         <file>icons/ChronoGW.png</file>
+        <file>icons/edittimeseries.png</file>
     </qresource>
 </RCC>

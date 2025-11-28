@@ -1,11 +1,13 @@
 #include "constantortimeserieswidget.h"
 #include "chartwindow.h"
+#include "TimeSeriesDialog.h"
 #include <QFileDialog>
 #include <QDoubleValidator>
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QDate>
 #include <QMouseEvent>
+#include <fstream>
 
 ConstantOrTimeSeriesWidget::ConstantOrTimeSeriesWidget(QWidget *parent)
     : QWidget(parent)
@@ -19,18 +21,26 @@ ConstantOrTimeSeriesWidget::ConstantOrTimeSeriesWidget(QWidget *parent)
 
     lineEdit->installEventFilter(this);
 
+    // Load button
     loadButton = new QPushButton(this);
     loadButton->setIcon(QIcon(":/icons/open.png"));
     loadButton->setToolTip("Load time series from file");
     loadButton->setMaximumWidth(30);
-    loadButton->setIconSize(QSize(20, 20));  // Adjust size as needed
+    loadButton->setIconSize(QSize(20, 20));
 
-    // View button with custom icon
+    // Edit button
+    editButton = new QPushButton(this);
+    editButton->setIcon(QIcon(":/icons/edittimeseries.png"));
+    editButton->setToolTip("Create or edit time series");
+    editButton->setMaximumWidth(30);
+    editButton->setIconSize(QSize(20, 20));
+
+    // View button
     viewButton = new QPushButton(this);
     viewButton->setIcon(QIcon(":/icons/observeddata.png"));
     viewButton->setToolTip("View time series chart");
     viewButton->setMaximumWidth(30);
-    viewButton->setIconSize(QSize(20, 20));  // Adjust size as needed
+    viewButton->setIconSize(QSize(20, 20));
     viewButton->setEnabled(false);
 
     // Create layout
@@ -39,6 +49,7 @@ ConstantOrTimeSeriesWidget::ConstantOrTimeSeriesWidget(QWidget *parent)
     layout->setSpacing(2);
     layout->addWidget(lineEdit);
     layout->addWidget(loadButton);
+    layout->addWidget(editButton);
     layout->addWidget(viewButton);
 
     // Connect signals
@@ -46,6 +57,8 @@ ConstantOrTimeSeriesWidget::ConstantOrTimeSeriesWidget(QWidget *parent)
             this, &ConstantOrTimeSeriesWidget::onLineEditChanged);
     connect(loadButton, &QPushButton::clicked,
             this, &ConstantOrTimeSeriesWidget::onLoadButtonClicked);
+    connect(editButton, &QPushButton::clicked,
+            this, &ConstantOrTimeSeriesWidget::onEditButtonClicked);
     connect(viewButton, &QPushButton::clicked,
             this, &ConstantOrTimeSeriesWidget::onViewButtonClicked);
 
@@ -70,14 +83,14 @@ void ConstantOrTimeSeriesWidget::setConstantValue(double value)
     lineEdit->setText(QString::number(value));
     lineEdit->blockSignals(false);
 
-    lineEdit->setReadOnly(false);  // Make sure it's editable
-    lineEdit->setEnabled(true);    // And enabled
+    lineEdit->setReadOnly(false);
+    lineEdit->setEnabled(true);
 
     updateViewButtonState();
+    updateEditButtonState();
 
     emit valueChanged();
 }
-
 
 void ConstantOrTimeSeriesWidget::setTimeSeriesFile(const QString& filename)
 {
@@ -108,7 +121,7 @@ void ConstantOrTimeSeriesWidget::setTimeSeriesFile(const QString& filename)
     // Successfully loaded - update widget state
     isConstant = false;
     timeSeriesFilename = filename;
-    timeSeries.setFilename(filename.toStdString());  // Store filename in TimeSeries object
+    timeSeries.setFilename(filename.toStdString());
 
     lineEdit->blockSignals(true);
     lineEdit->setText(filename);
@@ -116,6 +129,7 @@ void ConstantOrTimeSeriesWidget::setTimeSeriesFile(const QString& filename)
     lineEdit->setReadOnly(true);
 
     updateViewButtonState();
+    updateEditButtonState();
 
     emit timeSeriesLoaded();
     emit valueChanged();
@@ -158,16 +172,14 @@ void ConstantOrTimeSeriesWidget::setEnabled(bool enabled)
 {
     lineEdit->setEnabled(enabled && isConstant);
     loadButton->setEnabled(enabled);
+    editButton->setEnabled(enabled);
     viewButton->setEnabled(enabled && hasTimeSeries());
     QWidget::setEnabled(enabled);
 }
 
 void ConstantOrTimeSeriesWidget::onLineEditChanged()
 {
-    // Only process if in constant mode and user is actually typing
-    // (not if we're programmatically setting the text)
     if (isConstant && !lineEdit->text().isEmpty()) {
-        // Update the time series with new constant value
         double value = lineEdit->text().toDouble();
         QDate currentDate = QDate::currentDate();
         int currentYear = currentDate.year();
@@ -177,10 +189,11 @@ void ConstantOrTimeSeriesWidget::onLineEditChanged()
         timeSeries.append(static_cast<double>(currentYear), value);
 
         updateViewButtonState();
+        updateEditButtonState();
         emit valueChanged();
     }
-    // Don't do anything if isConstant is false - we're in time series mode
 }
+
 void ConstantOrTimeSeriesWidget::onLoadButtonClicked()
 {
     QString filename = QFileDialog::getOpenFileName(
@@ -192,6 +205,124 @@ void ConstantOrTimeSeriesWidget::onLoadButtonClicked()
 
     if (!filename.isEmpty()) {
         setTimeSeriesFile(filename);
+    }
+}
+
+void ConstantOrTimeSeriesWidget::onEditButtonClicked()
+{
+    // Determine if we're editing existing file or creating new
+    bool hasExistingFile = !timeSeriesFilename.isEmpty() && QFileInfo::exists(timeSeriesFilename);
+
+    // Create a working copy of the time series
+    TimeSeries<double> workingCopy;
+
+    if (hasExistingFile) {
+        // Load fresh from file to edit
+        workingCopy = timeSeries;
+    } else if (hasTimeSeries() && isConstant) {
+        // Start with current constant-generated time series
+        workingCopy = timeSeries;
+    }
+    // Otherwise workingCopy is empty (creating new)
+
+    // Open the dialog
+    TimeSeriesDialog dialog(&workingCopy, this);
+
+    if (hasExistingFile) {
+        dialog.setWindowTitle(tr("Edit Time Series - %1").arg(QFileInfo(timeSeriesFilename).fileName()));
+        dialog.setName(QString::fromStdString(workingCopy.name()));
+    } else {
+        dialog.setWindowTitle(tr("Create Time Series"));
+    }
+
+    dialog.setAxisLabels(tr("Time"), tr("Value"));
+
+    if (dialog.exec() == QDialog::Accepted) {
+        // Get the edited data
+        TimeSeries<double> editedData = dialog.getTimeSeries();
+
+        // Check if there's any data
+        if (editedData.size() == 0) {
+            QMessageBox::warning(this, tr("No Data"),
+                                 tr("The time series has no data points. Operation cancelled."));
+            return;
+        }
+
+        // Determine save path
+        QString savePath;
+
+        if (hasExistingFile) {
+            // Ask if user wants to save to same file or new file
+            QMessageBox::StandardButton reply = QMessageBox::question(
+                this,
+                tr("Save Time Series"),
+                tr("Save changes to the existing file?\n\n%1\n\n"
+                   "Click 'No' to save to a new file.").arg(timeSeriesFilename),
+                QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel
+                );
+
+            if (reply == QMessageBox::Cancel) {
+                return;
+            }
+
+            if (reply == QMessageBox::Yes) {
+                savePath = timeSeriesFilename;
+            } else {
+                // User wants new file
+                savePath = QFileDialog::getSaveFileName(
+                    this,
+                    tr("Save Time Series As"),
+                    QFileInfo(timeSeriesFilename).absolutePath(),
+                    tr("Text Files (*.txt);;CSV Files (*.csv);;All Files (*)")
+                    );
+
+                if (savePath.isEmpty()) {
+                    return;  // User cancelled
+                }
+            }
+        } else {
+            // No existing file - must save to new file
+            savePath = QFileDialog::getSaveFileName(
+                this,
+                tr("Save Time Series"),
+                QString(),
+                tr("Text Files (*.txt);;CSV Files (*.csv);;All Files (*)")
+                );
+
+            if (savePath.isEmpty()) {
+                QMessageBox::information(this, tr("Save Required"),
+                                         tr("You must save the time series to a file to use it."));
+                return;
+            }
+        }
+
+        // Save the time series to file
+        try {
+            // Sort by time before saving
+            TimeSeries<double> sortedData;
+            QVector<QPair<double, double>> points;
+            for (size_t i = 0; i < editedData.size(); ++i) {
+                points.append({editedData.getTime(i), editedData.getValue(i)});
+            }
+            std::sort(points.begin(), points.end(),
+                      [](const QPair<double, double>& a, const QPair<double, double>& b) {
+                          return a.first < b.first;
+                      });
+
+            for (const auto& point : points) {
+                sortedData.append(point.first, point.second);
+            }
+
+            sortedData.writefile(savePath.toStdString());
+
+        } catch (const std::exception& e) {
+            QMessageBox::critical(this, tr("Save Error"),
+                                  tr("Failed to save time series:\n%1").arg(e.what()));
+            return;
+        }
+
+        // Successfully saved - now load from that file to update widget
+        setTimeSeriesFile(savePath);
     }
 }
 
@@ -223,23 +354,28 @@ void ConstantOrTimeSeriesWidget::updateViewButtonState()
     viewButton->setEnabled(hasTimeSeries());
 }
 
+void ConstantOrTimeSeriesWidget::updateEditButtonState()
+{
+    // Edit button is always enabled - creates new if no data
+    editButton->setEnabled(true);
+}
+
 void ConstantOrTimeSeriesWidget::mouseDoubleClickEvent(QMouseEvent *event)
 {
-    // If we're in time series mode and user double-clicks anywhere on the widget
     if (!isConstant) {
         isConstant = true;
         timeSeriesFilename.clear();
         timeSeries = TimeSeries<double>();
 
         lineEdit->clear();
-        lineEdit->setReadOnly(false);  // Make it editable
+        lineEdit->setReadOnly(false);
         lineEdit->setEnabled(true);
         lineEdit->setPlaceholderText("Enter constant value");
 
         updateViewButtonState();
+        updateEditButtonState();
         emit valueChanged();
 
-        // Set focus so user can start typing immediately
         lineEdit->setFocus();
 
         event->accept();
@@ -251,9 +387,8 @@ void ConstantOrTimeSeriesWidget::mouseDoubleClickEvent(QMouseEvent *event)
 void ConstantOrTimeSeriesWidget::setTimeSeries(const TimeSeries<double>& ts)
 {
     isConstant = false;
-    timeSeries = ts;  // Copy the actual data
+    timeSeries = ts;
 
-    // DEBUG: Check what we actually received
     qDebug() << "setTimeSeries called:";
     qDebug() << "  Size:" << timeSeries.size();
     qDebug() << "  Filename:" << QString::fromStdString(ts.getFilename());
@@ -274,31 +409,30 @@ void ConstantOrTimeSeriesWidget::setTimeSeries(const TimeSeries<double>& ts)
     lineEdit->setEnabled(true);
 
     updateViewButtonState();
+    updateEditButtonState();
     emit valueChanged();
 }
 
 bool ConstantOrTimeSeriesWidget::eventFilter(QObject *obj, QEvent *event)
 {
     if (obj == lineEdit && event->type() == QEvent::MouseButtonDblClick) {
-        // Catch double-clicks on the lineEdit (even when read-only)
         if (!isConstant) {
-            // Switch to constant mode
             isConstant = true;
             timeSeriesFilename.clear();
             timeSeries = TimeSeries<double>();
 
             lineEdit->clear();
-            lineEdit->setReadOnly(false);  // Make it editable
+            lineEdit->setReadOnly(false);
             lineEdit->setEnabled(true);
             lineEdit->setPlaceholderText("Enter constant value");
 
             updateViewButtonState();
+            updateEditButtonState();
             emit valueChanged();
 
-            // Set focus so user can start typing immediately
             lineEdit->setFocus();
 
-            return true;  // Event handled
+            return true;
         }
     }
 

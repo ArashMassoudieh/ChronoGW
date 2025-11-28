@@ -96,6 +96,10 @@ SOURCES += \
     LIDconfig.cpp \
     MCMCSettingsDialog.cpp \
     ProgressWindow.cpp \
+    TimeSeriesChartWidget.cpp \
+    TimeSeriesDialog.cpp \
+    TimeSeriesPointDialog.cpp \
+    TimeSeriesTableModel.cpp \
     Tracer.cpp \
     Utilities/Distribution.cpp \
     Utilities/Matrix.cpp \
@@ -144,6 +148,10 @@ HEADERS += \
     InverseModeling/parameter_set.h \
     MCMCSettingsDialog.h \
     ProgressWindow.h \
+    TimeSeriesChartWidget.h \
+    TimeSeriesDialog.h \
+    TimeSeriesPointDialog.h \
+    TimeSeriesTableModel.h \
     Tracer.h \
     Utilities/Distribution.h \
     Utilities/Matrix.h \
