@@ -1,0 +1,10 @@
+well=Well1, {param[0]=p[Mean_age];param[1]=p[Shape_parameter];distribution=Inverse-Gaussian}
+
+tracer=Dummy, {decay=0.1000000000;input=C:/Projects/ChronoGW/constant_input.txt}
+
+observed=Measured_Dummy_at_Well1, {well=Well1; tracer=Dummy; std_param=Error_Std; error_structure=normal; observed_data=C:/Projects/ChronoGW/dummy_observed.txt}
+
+
+parameter=Mean_age, {low=1.0000000000;high=20.0000000000; prior_distribution=log-normal; value=10.0000000000}
+parameter=Shape_parameter, {low=0.1000000000;high=5.0000000000; prior_distribution=log-normal; value=2.0000000000}
+parameter=Error_Std, {low=0.1000000000;high=2.0000000000; prior_distribution=log-normal; value=1.0000000000}

@@ -339,12 +339,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_D920E96998F54BA9B1FB59F0ACF800E3"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_D9EF01B1F76B46B292E6ED1E676D5AE1"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -376,6 +370,12 @@
         "Entry"
         {
         "MsmKey" = "8:_E9544EBCFED74EA0A0713195045A336E"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_EE8D8B980BFC4D79BBF981CD349912A5"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -445,6 +445,14 @@
         "PrivateKeyFile" = "8:"
         "TimeStampServer" = "8:"
         "InstallerBootstrapper" = "3:2"
+            "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
+            {
+            "Enabled" = "11:TRUE"
+            "PromptEnabled" = "11:TRUE"
+            "PrerequisitesLocation" = "2:1"
+            "Url" = "8:"
+            "ComponentsUrl" = "8:"
+            }
         }
         "Release"
         {
@@ -461,6 +469,22 @@
         "PrivateKeyFile" = "8:"
         "TimeStampServer" = "8:"
         "InstallerBootstrapper" = "3:2"
+            "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
+            {
+            "Enabled" = "11:TRUE"
+            "PromptEnabled" = "11:TRUE"
+            "PrerequisitesLocation" = "2:1"
+            "Url" = "8:"
+            "ComponentsUrl" = "8:"
+                "Items"
+                {
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.7.2"
+                    {
+                    "Name" = "8:Microsoft .NET Framework 4.7.2 (x86 and x64)"
+                    "ProductCode" = "8:.NETFramework,Version=v4.7.2"
+                    }
+                }
+            }
         }
     }
     "Deployable"
@@ -1542,26 +1566,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D920E96998F54BA9B1FB59F0ACF800E3"
-            {
-            "SourcePath" = "8:C:\\Users\\arash\\Downloads\\ChronoGW.ico"
-            "TargetName" = "8:ChronoGW.ico"
-            "Tag" = "8:"
-            "Folder" = "8:_664DACFC51EE4C75BACD6C1132F04787"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D9EF01B1F76B46B292E6ED1E676D5AE1"
             {
             "SourcePath" = "8:..\\release\\Qt6Network.dll"
@@ -1666,6 +1670,26 @@
             {
             "SourcePath" = "8:..\\release\\generic\\qtuiotouchplugin.dll"
             "TargetName" = "8:qtuiotouchplugin.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_664DACFC51EE4C75BACD6C1132F04787"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_EE8D8B980BFC4D79BBF981CD349912A5"
+            {
+            "SourcePath" = "8:..\\resources\\icons\\ChronoGW.ico"
+            "TargetName" = "8:ChronoGW.ico"
             "Tag" = "8:"
             "Folder" = "8:_664DACFC51EE4C75BACD6C1132F04787"
             "Condition" = "8:"
@@ -1909,15 +1933,15 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:ChronoGWSetup"
-        "ProductCode" = "8:{D06A2C6A-591D-444F-B490-6E566892CF6D}"
-        "PackageCode" = "8:{F28750DC-1D9E-4085-9876-39A5A3A38EFD}"
+        "ProductCode" = "8:{427C701F-AB47-4453-B4F5-5B7CB60B192F}"
+        "PackageCode" = "8:{A7098A48-F4B4-40F0-8E7E-BBD074A92EA4}"
         "UpgradeCode" = "8:{3908E4F5-DF5D-44DD-A0F9-AF8A935270D8}"
         "AspNetVersion" = "8:2.0.50727.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:FALSE"
-        "ProductVersion" = "8:1.0.0"
+        "ProductVersion" = "8:1.0.1"
         "Manufacturer" = "8:EnviroInformatics, LLC"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
@@ -2041,7 +2065,7 @@
             "Target" = "8:_40F7C819B80347A58F2CB16A6E18B5FB"
             "Folder" = "8:_60FD5F60E2DF4B47B43D1DD4CAB48E21"
             "WorkingFolder" = "8:_664DACFC51EE4C75BACD6C1132F04787"
-            "Icon" = "8:_D920E96998F54BA9B1FB59F0ACF800E3"
+            "Icon" = "8:_EE8D8B980BFC4D79BBF981CD349912A5"
             "Feature" = "8:"
             }
             "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_FB8DD1C2C83C4D74AE57493DAF2CDA3B"
@@ -2055,7 +2079,7 @@
             "Target" = "8:_40F7C819B80347A58F2CB16A6E18B5FB"
             "Folder" = "8:_91AE04BDF83B48939C69DEA995828663"
             "WorkingFolder" = "8:_664DACFC51EE4C75BACD6C1132F04787"
-            "Icon" = "8:_D920E96998F54BA9B1FB59F0ACF800E3"
+            "Icon" = "8:_EE8D8B980BFC4D79BBF981CD349912A5"
             "Feature" = "8:"
             }
         }

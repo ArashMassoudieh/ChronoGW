@@ -1295,7 +1295,7 @@ QString MainWindow::getMCMCSettingsFilename(const QString& projectFilename)
 void MainWindow::onAbout()
 {
     AboutDialog dialog(this);
-    dialog.setVersion("1.0.0");
+    dialog.setVersion("1.0.1");
     dialog.exec();
 }
 
