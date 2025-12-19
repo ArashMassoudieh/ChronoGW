@@ -18,13 +18,14 @@
 #include "MCMCSettingsDialog.h"
 
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , wellsWidget(nullptr)
     , tracersWidget(nullptr)
     , parametersWidget(nullptr)
     , observationsWidget(nullptr)
+    , mcmc(&gwaModel)
 {
     ui->setupUi(this);
 
@@ -1302,6 +1303,7 @@ void MainWindow::onAbout()
 void MainWindow::onRunMCMC()
 {
     // Check if model is loaded
+        
     if (gwaModel.Parameters().empty()) {
         QMessageBox::warning(this, "No Model",
                              "Please load a model file before running MCMC.");

@@ -206,6 +206,10 @@
   <ItemGroup>
     <ClCompile Include="AboutDialog.cpp" />
     <ClCompile Include="InverseModeling\src\GA\Binary.cpp" />
+    <ClCompile Include="TimeSeriesChartWidget.cpp" />
+    <ClCompile Include="TimeSeriesDialog.cpp" />
+    <ClCompile Include="TimeSeriesPointDialog.cpp" />
+    <ClCompile Include="TimeSeriesTableModel.cpp" />
     <ClCompile Include="Utilities\Distribution.cpp" />
     <ClCompile Include="InverseModeling\src\GA\DistributionNUnif.cpp" />
     <ClCompile Include="InverseModeling\src\GA\GADistribution.cpp" />
@@ -246,6 +250,10 @@
     <QtMoc Include="AboutDialog.h" />
     <ClInclude Include="InverseModeling\include\GA\Binary.h" />
     <ClInclude Include="InverseModeling\include\GA\Distribution.h" />
+    <QtMoc Include="TimeSeriesPointDialog.h" />
+    <QtMoc Include="TimeSeriesDialog.h" />
+    <QtMoc Include="TimeSeriesTableModel.h" />
+    <QtMoc Include="TimeSeriesChartWidget.h" />
     <ClInclude Include="Utilities\Distribution.h" />
     <ClInclude Include="InverseModeling\include\GA\DistributionNUnif.h" />
     <ClInclude Include="GA.h" />

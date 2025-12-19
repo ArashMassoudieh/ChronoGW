@@ -158,6 +158,18 @@
     <ClCompile Include="AboutDialog.cpp">
       <Filter>Generated Files</Filter>
     </ClCompile>
+    <ClCompile Include="TimeSeriesPointDialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TimeSeriesDialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TimeSeriesTableModel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TimeSeriesChartWidget.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="InverseModeling\include\GA\Binary.h">
@@ -335,6 +347,18 @@
   <ItemGroup>
     <QtMoc Include="AboutDialog.h">
       <Filter>Generated Files</Filter>
+    </QtMoc>
+    <QtMoc Include="TimeSeriesPointDialog.h">
+      <Filter>Source Files</Filter>
+    </QtMoc>
+    <QtMoc Include="TimeSeriesDialog.h">
+      <Filter>Source Files</Filter>
+    </QtMoc>
+    <QtMoc Include="TimeSeriesTableModel.h">
+      <Filter>Source Files</Filter>
+    </QtMoc>
+    <QtMoc Include="TimeSeriesChartWidget.h">
+      <Filter>Source Files</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>

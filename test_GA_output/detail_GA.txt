@@ -1,0 +1,349 @@
+Initializing population...
+Population randomly initialized.
+Population initialized.
+Assigning fitnesses ...
+Creating model copies and applying parameters...
+Evaluating fitness in parallel...
+0, 9.886398e-01, 4.512354e-01, 
+0, fitness=3.478873e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+1, 1.278924e-01, 1.462264e-02, 
+1, fitness=4.507991e+02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+2, 1.882229e-02, 3.841014e-01, 
+2, fitness=9.668673e+03, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+3, 5.363463e-01, 5.754726e-01, 
+3, fitness=1.086420e+01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+4, 6.057463e-01, 6.110941e-01, 
+4, fitness=8.405295e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+5, 1.745720e-01, 6.664147e-01, 
+5, fitness=1.035968e+02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+6, 4.562810e-01, 3.586013e-01, 
+6, fitness=1.560794e+01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+7, 6.646870e-02, 6.116077e-01, 
+7, fitness=7.368738e+02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+8, 7.854854e-01, 8.045802e-01, 
+8, fitness=4.727592e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+9, 5.246840e-01, 3.089306e-01, 
+9, fitness=1.143518e+01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+Fitness evaluation complete.
+Assigning fitnesses done!
+Generation: 0
+Cross-over ...
+Cross-over done!
+Mutation ...
+Mutation done!
+Shake...!
+Shake done!
+Assigning fitnesses ...
+Creating model copies and applying parameters...
+Evaluating fitness in parallel...
+0, 9.886398e-01, 4.512354e-01, 
+0, fitness=3.478873e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+1, 1.000000e+00, 4.428371e-01, 
+1, fitness=3.416106e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+2, 1.000000e+00, 6.396770e-01, 
+2, fitness=3.238354e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+3, 3.852662e-01, 8.226035e-01, 
+3, fitness=1.957572e+01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+4, 9.688337e-01, 4.712332e-01, 
+4, fitness=3.588827e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+5, 9.517481e-01, 4.316060e-01, 
+5, fitness=3.727640e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+6, 9.313037e-01, 1.186911e-01, 
+6, fitness=7.471593e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+7, 1.160586e-01, 7.495988e-01, 
+7, fitness=2.297070e+02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+8, 9.463144e-01, 4.681487e-01, 
+8, fitness=3.742114e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+9, 1.000000e+00, 4.431742e-01, 
+9, fitness=3.415930e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+Fitness evaluation complete.
+Assigning fitnesses done!
+Generation: 1
+Cross-over ...
+Cross-over done!
+Mutation ...
+Mutation done!
+Shake...!
+Shake done!
+Assigning fitnesses ...
+Creating model copies and applying parameters...
+Evaluating fitness in parallel...
+0, 9.313037e-01, 1.186911e-01, 
+0, fitness=7.471593e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+1, 9.431628e-01, 1.211660e-01, 
+1, fitness=8.111093e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+2, 9.549623e-01, 1.467834e-02, 
+2, fitness=8.054759e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+3, 9.089675e-01, 7.355429e-01, 
+3, fitness=3.702300e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+4, 1.000000e+00, 4.459814e-01, 
+4, fitness=3.414428e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+5, 9.566666e-01, 4.969314e-01, 
+5, fitness=3.646937e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+6, 9.079326e-01, 1.638022e-01, 
+6, fitness=2.115160e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+7, 1.000000e+00, 4.152963e-01, 
+7, fitness=3.426740e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+8, 9.208791e-01, 1.194370e-01, 
+8, fitness=7.771523e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+9, 9.176618e-01, 1.213716e-01, 
+9, fitness=8.390264e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+Fitness evaluation complete.
+Assigning fitnesses done!
+Generation: 2
+Cross-over ...
+Cross-over done!
+Mutation ...
+Mutation done!
+Shake...!
+Shake done!
+Assigning fitnesses ...
+Creating model copies and applying parameters...
+Evaluating fitness in parallel...
+0, 9.313037e-01, 1.186911e-01, 
+0, fitness=7.471593e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+1, 9.425915e-01, 1.239859e-01, 
+1, fitness=8.939663e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+2, 9.423031e-01, 3.750474e-01, 
+2, fitness=3.796226e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+3, 9.036279e-01, 1.458767e-01, 
+3, fitness=1.622417e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+4, 9.253419e-01, 7.509151e-01, 
+4, fitness=3.568151e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+5, 8.857562e-01, 3.258138e-01, 
+5, fitness=4.169798e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+6, 8.886446e-01, 3.414687e-01, 
+6, fitness=4.179137e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+7, 8.749096e-01, 5.447720e-01, 
+7, fitness=4.222922e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+8, 1.000000e+00, 1.211393e-01, 
+8, fitness=7.728896e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+9, 8.925936e-01, 1.175163e-01, 
+9, fitness=7.394596e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+Fitness evaluation complete.
+Assigning fitnesses done!
+Generation: 3
+Cross-over ...
+Cross-over done!
+Mutation ...
+Mutation done!
+Shake...!
+Shake done!
+Assigning fitnesses ...
+Creating model copies and applying parameters...
+Evaluating fitness in parallel...
+0, 8.925936e-01, 1.175163e-01, 
+0, fitness=7.394596e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+1, 9.277572e-01, 1.168767e-01, 
+1, fitness=6.957038e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+2, 8.431989e-01, 1.709733e-01, 
+2, fitness=2.605434e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+3, 1.000000e+00, 1.265505e-01, 
+3, fitness=9.136211e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+4, 8.823124e-01, 3.070016e-01, 
+4, fitness=4.139481e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+5, 9.646934e-01, 1.201097e-01, 
+5, fitness=7.659592e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+6, 9.767403e-01, 1.154473e-01, 
+6, fitness=6.337901e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+7, 1.000000e+00, 1.253657e-01, 
+7, fitness=8.827345e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+8, 9.719391e-01, 5.317412e-01, 
+8, fitness=3.514806e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+9, 9.021751e-01, 1.296898e-01, 
+9, fitness=1.120064e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+Fitness evaluation complete.
+Assigning fitnesses done!
+Generation: 4
+Cross-over ...
+Cross-over done!
+Mutation ...
+Mutation done!
+Shake...!
+Shake done!
+Assigning fitnesses ...
+Creating model copies and applying parameters...
+Evaluating fitness in parallel...
+0, 9.767403e-01, 1.154473e-01, 
+0, fitness=6.337901e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+1, 9.515296e-01, 1.130175e-01, 
+1, fitness=5.756839e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+2, 8.350409e-01, 3.359764e-01, 
+2, fitness=4.674411e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+3, 9.447092e-01, 1.104252e-01, 
+3, fitness=5.062048e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+4, 9.720130e-01, 1.302541e-01, 
+4, fitness=1.040737e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+5, 9.597639e-01, 5.311295e-01, 
+5, fitness=3.593290e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+6, 8.553436e-01, 1.147125e-01, 
+6, fitness=6.755827e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+7, 8.600557e-01, 1.141810e-01, 
+7, fitness=6.539539e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+8, 9.828120e-01, 1.116871e-01, 
+8, fitness=5.348302e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+9, 9.896200e-01, 1.108637e-01, 
+9, fitness=5.135898e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+Fitness evaluation complete.
+Assigning fitnesses done!
+Generation: 5
+Cross-over ...
+Cross-over done!
+Mutation ...
+Mutation done!
+Shake...!
+Shake done!
+Assigning fitnesses ...
+Creating model copies and applying parameters...
+Evaluating fitness in parallel...
+0, 9.447092e-01, 1.104252e-01, 
+0, fitness=5.062048e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+1, 9.183215e-01, 1.056410e-01, 
+1, fitness=3.768044e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+2, 9.704627e-01, 2.017128e-01, 
+2, fitness=2.633671e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+3, 1.215491e-01, 1.842911e-02, 
+3, fitness=4.150088e+02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+4, 9.947540e-01, 3.369208e-01, 
+4, fitness=3.417203e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+5, 1.566535e-01, 1.118518e-01, 
+5, fitness=2.004487e+01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+6, 9.761439e-01, 7.561331e-01, 
+6, fitness=3.246275e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+7, 8.921695e-01, 1.204484e-01, 
+7, fitness=8.344641e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+8, 9.772284e-01, 9.231995e-02, 
+8, fitness=1.097811e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+9, 9.385477e-01, 1.744089e-01, 
+9, fitness=2.255101e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+Fitness evaluation complete.
+Assigning fitnesses done!
+Generation: 6
+Cross-over ...
+Cross-over done!
+Mutation ...
+Mutation done!
+Shake...!
+Shake done!
+Assigning fitnesses ...
+Creating model copies and applying parameters...
+Evaluating fitness in parallel...
+0, 9.772284e-01, 9.231995e-02, 
+0, fitness=1.097811e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+1, 1.000000e+00, 9.541480e-02, 
+1, fitness=1.788787e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+2, 1.000000e+00, 8.464139e-02, 
+2, fitness=3.147072e-02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+3, 4.487277e-02, 3.724502e-02, 
+3, fitness=1.066224e+03, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+4, 9.157217e-01, 1.719764e-01, 
+4, fitness=2.289829e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+5, 9.105361e-01, 2.655935e-01, 
+5, fitness=3.692441e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+6, 9.661840e-01, 2.503914e-01, 
+6, fitness=3.217629e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+7, 9.895139e-01, 6.170754e-01, 
+7, fitness=3.320848e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+8, 9.105293e-01, 9.466827e-02, 
+8, fitness=1.061623e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+9, 1.000000e+00, 1.023365e-01, 
+9, fitness=3.161642e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+Fitness evaluation complete.
+Assigning fitnesses done!
+Generation: 7
+Cross-over ...
+Cross-over done!
+Mutation ...
+Mutation done!
+Shake...!
+Shake done!
+Assigning fitnesses ...
+Creating model copies and applying parameters...
+Evaluating fitness in parallel...
+0, 1.000000e+00, 8.464139e-02, 
+0, fitness=3.147072e-02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+1, 1.000000e+00, 8.242700e-02, 
+1, fitness=1.493309e-02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+2, 1.000000e+00, 1.035668e-01, 
+2, fitness=3.430098e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+3, 9.918930e-01, 7.337478e-02, 
+3, fitness=6.983683e-03, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+4, 9.831211e-01, 6.747526e-02, 
+4, fitness=7.513621e-02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+5, 9.198828e-01, 1.915720e-01, 
+5, fitness=2.695533e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+6, 9.693413e-01, 1.962169e-01, 
+6, fitness=2.550547e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+7, 9.644711e-01, 6.969028e-02, 
+7, fitness=2.094022e-02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+8, 9.128411e-01, 2.775077e-01, 
+8, fitness=3.754436e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+9, 9.484697e-01, 2.692819e-01, 
+9, fitness=3.460484e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+Fitness evaluation complete.
+Assigning fitnesses done!
+Generation: 8
+Cross-over ...
+Cross-over done!
+Mutation ...
+Mutation done!
+Shake...!
+Shake done!
+Assigning fitnesses ...
+Creating model copies and applying parameters...
+Evaluating fitness in parallel...
+0, 9.918930e-01, 7.337478e-02, 
+0, fitness=6.983683e-03, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+1, 1.000000e+00, 7.621453e-02, 
+1, fitness=1.768132e-03, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+2, 9.522156e-01, 2.040065e-01, 
+2, fitness=2.754139e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+3, 8.978667e-01, 8.643323e-02, 
+3, fitness=-4.723862e-02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+4, 9.157464e-01, 7.250434e-02, 
+4, fitness=-6.220561e-02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+5, 1.000000e+00, 8.300567e-02, 
+5, fitness=1.871161e-02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+6, 9.990189e-01, 8.153229e-02, 
+6, fitness=8.920434e-03, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+7, 9.719530e-01, 6.965261e-02, 
+7, fitness=2.834876e-02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+8, 9.612613e-01, 4.197224e-01, 
+8, fitness=3.667744e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+9, 9.917920e-01, 7.115464e-02, 
+9, fitness=2.719593e-02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+Fitness evaluation complete.
+Assigning fitnesses done!
+Generation: 9
+Cross-over ...
+Cross-over done!
+Mutation ...
+Mutation done!
+Shake...!
+Shake done!
+Performing final fitness evaluation...
+Performing final fitness evaluation...
+Creating model copies and applying parameters...
+Evaluating fitness in parallel...
+0, 9.157464e-01, 7.250434e-02, 
+0, fitness=-6.220561e-02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+1, 9.331114e-01, 7.360904e-02, 
+1, fitness=-5.397091e-02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+2, 8.961195e-01, 7.210979e-02, 
+2, fitness=-7.835193e-02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+3, 8.950861e-01, 1.924483e-01, 
+3, fitness=2.842171e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+4, 9.497875e-01, 4.321045e-01, 
+4, fitness=3.740956e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+5, 9.318143e-01, 4.103734e-01, 
+5, fitness=3.877111e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+6, 9.574404e-01, 8.204163e-02, 
+6, fitness=-2.970506e-02, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+7, 9.674863e-01, 7.124803e-02, 
+7, fitness=3.092657e-03, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+8, 8.893296e-01, 8.184892e-02, 
+8, fitness=-1.026735e-01, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+9, 9.862660e-01, 1.465435e-02, 
+9, fitness=7.589581e+00, time=0.000000e+00, internal_time=0.000000e+00, failed=0
+Fitness evaluation complete.
+Optimization complete!

@@ -1,11 +1,9 @@
-path=
-outpath=
+well=Well1, {param[0]=p[Well1_Gamma_p1];param[1]=2.0000000000;distribution=Gamma}
 
-well=Well, {param[0]=5.0000000000;distribution=Exponential}
+tracer=3H, {input=C:/Projects/ChronoGW/Inputs/3H.txt}
 
-tracer=Dummy, {decay=10.0000000000;input=/home/arash/Projects/ChronoGW/constant_input.txt}
-
-observed=Obs, {well=Well; tracer=Dummy; std_param=STD_obs; error_structure=normal; observed_data=/home/arash/Projects/ChronoGW/dummy_observed.txt; count_max=1}
+observed=3H@Well1, {well=Well1; tracer=3H; std_param=3H_Std; error_structure=normal; observed_data=C:/Projects/ChronoGW/Inputs/3H_well4.txt}
 
 
-parameter=STD_obs, {low=0.1000000000;high=10.0000000000; prior_distribution=log-normal; value=1.0000000000}
+parameter=3H_Std, {low=0.0100000000;high=6.0000000000; prior_distribution=log-normal; value=1.0000000000}
+parameter=Well1_Gamma_p1, {low=0.0500000000;high=5.0000000000; prior_distribution=log-normal; value=1.0000000000}

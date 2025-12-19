@@ -1,0 +1,9 @@
+well=Well 4, {param[0]=p[Well1_P1];param[1]=1.0000000000;distribution=Gamma}
+
+tracer=3H, {decay=0.0562600000;input=C:/Projects/ChronoGW/Inputs/3H.txt}
+
+observed=3H@Well4, {well=Well 4; tracer=3H; std_param=3H_std; error_structure=log-normal; observed_data=C:/Projects/ChronoGW/Inputs/3H_well4.txt; count_max=1}
+
+
+parameter=3H_std, {low=0.0100000000;high=10.0000000000; prior_distribution=log-normal; value=0.1599004509}
+parameter=Well1_P1, {low=0.0500000000;high=10.0000000000; prior_distribution=log-normal; value=8.3472600000}
